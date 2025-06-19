@@ -1,0 +1,356 @@
+from PIL import Image
+from torch.utils.data import Dataset
+import torch
+import shutil
+import argparse
+import copy
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image as imwrite
+from torchvision import transforms
+import os
+import time
+import re
+import numpy as np
+import torch.nn.functional as F
+import trimesh as Trimesh
+from torchvision import transforms
+from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+from typing import Union, Optional, Tuple, List, Any, Callable
+
+#painting
+from .hy3dpaint.DifferentiableRenderer.MeshRender import MeshRender
+from .hy3dpaint.utils.simplify_mesh_utils import remesh_mesh
+from .hy3dpaint.utils.multiview_utils import multiviewDiffusionNet
+from .hy3dpaint.utils.pipeline_utils import ViewProcessor
+from .hy3dpaint.utils.image_super_utils import imageSuperNet
+from .hy3dpaint.utils.uvwrap_utils import mesh_uv_wrap
+from .hy3dpaint.convert_utils import create_glb_with_pbr_materials
+from .hy3dpaint.textureGenPipeline import Hunyuan3DPaintPipeline, Hunyuan3DPaintConfig
+
+import folder_paths
+
+import comfy.model_management as mm
+from comfy.utils import load_torch_file, ProgressBar
+
+script_directory = os.path.dirname(os.path.abspath(__file__))
+comfy_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+diffusions_dir = os.path.join(comfy_path, "models", "diffusers")
+
+def _convert_texture_format(tex: Union[np.ndarray, torch.Tensor, Image.Image], 
+                          texture_size: Tuple[int, int], device: str, force_set: bool = False) -> torch.Tensor:
+    """Unified texture format conversion logic."""
+    if not force_set:
+        if isinstance(tex, np.ndarray):
+            tex = Image.fromarray((tex * 255).astype(np.uint8))
+        elif isinstance(tex, torch.Tensor):            
+            tex_np = tex.cpu().numpy()
+
+            # 2. Handle potential batch dimension (B, C, H, W) or (B, H, W, C)
+            if tex_np.ndim == 4:
+                if tex_np.shape[0] == 1:
+                    tex_np = tex_np.squeeze(0)
+                else:
+                    tex_np = tex_np[0]
+            
+            # 3. Handle data type and channel order for PIL
+            if tex_np.ndim == 3:
+                if tex_np.shape[0] in [1, 3, 4] and tex_np.shape[0] < tex_np.shape[1] and tex_np.shape[0] < tex_np.shape[2]:
+                    tex_np = np.transpose(tex_np, (1, 2, 0))
+                elif tex_np.shape[2] in [1, 3, 4] and tex_np.shape[0] > 4 and tex_np.shape[1] > 4:
+                    pass
+                else:
+                    raise ValueError(f"Unsupported 3D tensor shape after squeezing batch and moving to CPU. "
+                                     f"Expected (C, H, W) or (H, W, C) but got {tex_np.shape}")
+                
+                if tex_np.shape[2] == 1:
+                    tex_np = tex_np.squeeze(2) # Remove the channel dimension
+
+            elif tex_np.ndim == 2:
+                pass
+            else:
+                raise ValueError(f"Unsupported tensor dimension after squeezing batch and moving to CPU: {tex_np.ndim} "
+                                 f"with shape {tex_np.shape}. Expected 2D or 3D image data.")
+
+            tex_np_uint8 = (tex_np * 255).astype(np.uint8)    
+            
+            tex = Image.fromarray(tex_np_uint8)
+
+        
+        tex = tex.resize(texture_size).convert("RGB")
+        tex = np.array(tex) / 255.0
+        return torch.from_numpy(tex).to(device).float()
+    else:
+        if isinstance(tex, np.ndarray):
+            tex = torch.from_numpy(tex)
+        return tex.to(device).float()
+
+def convert_ndarray_to_pil(texture):
+    texture_size = len(texture)
+    tex = _convert_texture_format(texture,(texture_size, texture_size),"cuda")
+    tex = tex.cpu().numpy()
+    processed_texture = (tex * 255).astype(np.uint8)
+    pil_texture = Image.fromarray(processed_texture)    
+    return pil_texture
+
+def get_filename_list(folder_name: str):
+    files = [f for f in os.listdir(folder_name)]
+    return files
+    
+# Tensor to PIL
+def tensor2pil(image):
+    return Image.fromarray(np.clip(255. * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8))
+
+# PIL to Tensor
+def pil2tensor(image):
+    return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)    
+
+def convert_pil_images_to_tensor(images):
+    tensor_array = []
+    
+    for image in images:
+        tensor_array.append(pil2tensor(image))
+        
+    return tensor_array
+    
+def convert_tensor_images_to_pil(images):
+    pil_array = []
+    
+    for image in images:
+        pil_array.append(tensor2pil(image))
+        
+    return pil_array    
+        
+class Hy3DMeshGenerator:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder",}),
+                "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
+                "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
+                "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
+                "octree_resolution": ("INT", {"default": 384, "min": 32, "max": 1024, "step": 32, "tooltip": "Octree resolution"}),
+            },
+        }
+
+    RETURN_TYPES = ("TRIMESH", )
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "loadmodel"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def loadmodel(self, model, image, steps, guidance_scale, octree_resolution):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+
+        from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+        #from .hy3dshape.hy3dshape.rembg import BackgroundRemover
+        #import torchvision.transforms as T
+
+        model_path = folder_paths.get_full_path("diffusion_models", model)
+        if not hasattr(self, "pipeline"):
+            self.pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
+                config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
+                ckpt_path=model_path)
+        
+        # to_pil = T.ToPILImage()
+        # image = to_pil(image[0].permute(2, 0, 1))
+        
+        # if image.mode == 'RGB':
+            # rembg = BackgroundRemover()
+            # image = rembg(image)
+            
+        image = tensor2pil(image)
+        
+        mesh = self.pipeline(
+            image=image,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            octree_resolution=octree_resolution
+            )[0]
+        
+        return (mesh,)
+        
+class Hy3DMultiViewsGenerator:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "camera_config": ("HY3D21CAMERA",),
+                "view_size": ("INT", {"default": 512, "min": 512, "max":768, "step":256}),
+                "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
+                "steps": ("INT", {"default": 10, "min": 1, "max": 100, "step": 1, "tooltip": "Number of steps"}),
+                "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
+                "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512})
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE",)
+    RETURN_NAMES = ("pipeline", "albedo","mr",)
+    FUNCTION = "genmultiviews"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        
+        conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)
+        paint_pipeline = Hunyuan3DPaintPipeline(conf)
+        
+        image = tensor2pil(image)
+        
+        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")       
+        
+        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale)
+        
+        albedo_tensor = []
+        mr_tensor = []
+        
+        for pil_img in albedo:
+            np_img = np.array(pil_img).astype(np.uint8)
+            np_img = np_img / 255.0
+            tensor_img = torch.from_numpy(np_img)
+            albedo_tensor.append(tensor_img)
+
+        for pil_img in mr:
+            np_img = np.array(pil_img).astype(np.uint8)
+            np_img = np_img / 255.0
+            tensor_img = torch.from_numpy(np_img)
+            mr_tensor.append(tensor_img)
+        
+        # albedo = convert_pil_images_to_tensor(albedo)
+        # mr = convert_pil_images_to_tensor(mr)       
+        
+        return (paint_pipeline, albedo_tensor, mr_tensor,)       
+        
+class Hy3DBakeMultiViews:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "pipeline": ("HY3DPIPELINE", ),
+                "camera_config": ("HY3D21CAMERA", ),
+                "albedo": ("IMAGE", ),
+                "mr": ("IMAGE", )                
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "NPARRAY", "NPARRAY", "NPARRAY", "NPARRAY", "IMAGE", "IMAGE",)
+    RETURN_NAMES = ("pipeline", "albedo", "albedo_mask", "mr", "mr_mask", "albedo_texture", "mr_texture",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, pipeline, camera_config, albedo, mr):
+        
+        albedo = convert_tensor_images_to_pil(albedo)
+        mr = convert_tensor_images_to_pil(mr)
+        
+        texture, mask, texture_mr, mask_mr = pipeline.bake_from_multiview(albedo,mr,camera_config["selected_camera_elevs"], camera_config["selected_camera_azims"], camera_config["selected_view_weights"])
+        
+        texture_pil = convert_ndarray_to_pil(texture)
+        #mask_pil = convert_ndarray_to_pil(mask)
+        texture_mr_pil = convert_ndarray_to_pil(texture_mr)
+        #mask_mr_pil = convert_ndarray_to_pil(mask_mr)
+        
+        texture_tensor = pil2tensor(texture_pil)
+        #mask_tensor = pil2tensor(mask_pil)
+        texture_mr_tensor = pil2tensor(texture_mr_pil)
+        #mask_mr_tensor = pil2tensor(mask_mr_pil)
+        
+        return (pipeline, texture, mask, texture_mr, mask_mr, texture_tensor, texture_mr_tensor)
+        
+class Hy3DInPaint:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "pipeline": ("HY3DPIPELINE", ),
+                "albedo": ("NPARRAY", ),
+                "albedo_mask": ("NPARRAY", ),
+                "mr": ("NPARRAY", ),
+                "mr_mask": ("NPARRAY",),
+                "output_mesh_name": ("STRING",),
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","TRIMESH", "STRING",)
+    RETURN_NAMES = ("pipeline", "albedo", "mr", "trimesh", "output_glb_path")
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, pipeline, albedo, albedo_mask, mr, mr_mask, output_mesh_name):
+        
+        #albedo = tensor2pil(albedo)
+        #albedo_mask = tensor2pil(albedo_mask)
+        #mr = tensor2pil(mr)
+        #mr_mask = tensor2pil(mr_mask)       
+        
+        albedo, mr = pipeline.inpaint(albedo, albedo_mask, mr, mr_mask)
+        
+        pipeline.set_texture_albedo(albedo)
+        pipeline.set_texture_mr(mr)
+        
+        output_mesh_path = os.path.join(comfy_path, "temp", f"{output_mesh_name}.obj")
+        output_temp_path = pipeline.save_mesh(output_mesh_path)
+        
+        output_glb_path = os.path.join(comfy_path, "output", f"{output_mesh_name}.glb")
+        shutil.copyfile(output_temp_path, output_glb_path)
+        
+        trimesh = Trimesh.load(output_glb_path)
+        
+        texture_pil = convert_ndarray_to_pil(albedo)
+        texture_mr_pil = convert_ndarray_to_pil(mr)
+        texture_tensor = pil2tensor(texture_pil)
+        texture_mr_tensor = pil2tensor(texture_mr_pil)
+        
+        output_glb_path = f"{output_mesh_name}.glb"
+        
+        return (pipeline, texture_tensor, texture_mr_tensor, trimesh, output_glb_path)         
+        
+class Hy3D21CameraConfig:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "camera_azimuths": ("STRING", {"default": "0, 90, 180, 270, 0, 180", "multiline": False}),
+                "camera_elevations": ("STRING", {"default": "0, 0, 0, 0, 90, -90", "multiline": False}),
+                "view_weights": ("STRING", {"default": "1, 0.1, 0.5, 0.1, 0.05, 0.05", "multiline": False}),
+                "ortho_scale": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.01}),
+            },
+        }
+
+    RETURN_TYPES = ("HY3D21CAMERA",)
+    RETURN_NAMES = ("camera_config",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, camera_azimuths, camera_elevations, view_weights, ortho_scale):
+        angles_list = list(map(int, camera_azimuths.replace(" ", "").split(',')))
+        elevations_list = list(map(int, camera_elevations.replace(" ", "").split(',')))
+        weights_list = list(map(float, view_weights.replace(" ", "").split(',')))
+
+        camera_config = {
+            "selected_camera_azims": angles_list,
+            "selected_camera_elevs": elevations_list,
+            "selected_view_weights": weights_list,
+            "ortho_scale": ortho_scale,
+            }
+        
+        return (camera_config,)
+
+NODE_CLASS_MAPPINGS = {
+    "Hy3DMeshGenerator": Hy3DMeshGenerator,
+    "Hy3DMultiViewsGenerator": Hy3DMultiViewsGenerator,
+    "Hy3DBakeMultiViews": Hy3DBakeMultiViews,
+    "Hy3DInPaint": Hy3DInPaint,
+    "Hy3D21CameraConfig": Hy3D21CameraConfig,
+    }
+    
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "Hy3DMeshGenerator": "Hunyuan 3D 2.1 Mesh Generator",
+    "Hy3DMultiViewsGenerator": "Hunyuan 3D 2.1 MultiViews Generator",
+    "Hy3DBakeMultiViews": "Hunyuan 3D 2.1 Bake MultiViews",
+    "Hy3DInPaint": "Hunyuan 3D 2.1 InPaint",
+    "Hy3D21CameraConfig": "Hunyuan 3D 2.1 Camera Config"
+    }

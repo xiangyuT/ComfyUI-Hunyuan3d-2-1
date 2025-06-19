@@ -1,0 +1,686 @@
+{
+  "id": "5ad4bf3d-e612-4571-8502-0a19e6b7a824",
+  "revision": 0,
+  "last_node_id": 40,
+  "last_link_id": 64,
+  "nodes": [
+    {
+      "id": 11,
+      "type": "PreviewImage",
+      "pos": [
+        -316.0067443847656,
+        1122.1600341796875
+      ],
+      "size": [
+        286.0066833496094,
+        385.5533752441406
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 46
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 9,
+      "type": "Hy3DBakeMultiViews",
+      "pos": [
+        102.99957275390625,
+        881.0684204101562
+      ],
+      "size": [
+        247.41854858398438,
+        146
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipeline",
+          "type": "HY3DPIPELINE",
+          "link": 42
+        },
+        {
+          "name": "camera_config",
+          "type": "HY3D21CAMERA",
+          "link": 64
+        },
+        {
+          "name": "albedo",
+          "type": "IMAGE",
+          "link": 43
+        },
+        {
+          "name": "mr",
+          "type": "IMAGE",
+          "link": 45
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipeline",
+          "type": "HY3DPIPELINE",
+          "links": [
+            25
+          ]
+        },
+        {
+          "name": "albedo",
+          "type": "NPARRAY",
+          "links": [
+            54
+          ]
+        },
+        {
+          "name": "albedo_mask",
+          "type": "NPARRAY",
+          "links": [
+            55
+          ]
+        },
+        {
+          "name": "mr",
+          "type": "NPARRAY",
+          "links": [
+            56
+          ]
+        },
+        {
+          "name": "mr_mask",
+          "type": "NPARRAY",
+          "links": [
+            57
+          ]
+        },
+        {
+          "name": "albedo_texture",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "mr_texture",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Hy3DBakeMultiViews",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 36,
+      "type": "Preview3D",
+      "pos": [
+        658.7349243164062,
+        898.7421264648438
+      ],
+      "size": [
+        649.873046875,
+        600.7554321289062
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "camera_info",
+          "shape": 7,
+          "type": "LOAD3D_CAMERA",
+          "link": null
+        },
+        {
+          "name": "model_file",
+          "type": "STRING",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": 58
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "Preview3D",
+        "widget_ue_connectable": {},
+        "Camera Info": {
+          "position": {
+            "x": 4.420338941505175,
+            "y": 6.016707216613694,
+            "z": 8.014234190430846
+          },
+          "target": {
+            "x": 0.14109532187437063,
+            "y": 1.7528897027500157,
+            "z": 0.06803125286913106
+          },
+          "zoom": 1,
+          "cameraType": "perspective"
+        },
+        "Last Time Model File": "wartent_2048.glb"
+      },
+      "widgets_values": [
+        "wartent_2048.glb",
+        ""
+      ]
+    },
+    {
+      "id": 37,
+      "type": "PreviewImage",
+      "pos": [
+        672.39990234375,
+        563.9511108398438
+      ],
+      "size": [
+        322.52423095703125,
+        281.72943115234375
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 59
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 38,
+      "type": "PreviewImage",
+      "pos": [
+        1032.568603515625,
+        550.2861938476562
+      ],
+      "size": [
+        333.2611999511719,
+        296.3704528808594
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 60
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 10,
+      "type": "PreviewImage",
+      "pos": [
+        -10.624388694763184,
+        1130.163818359375
+      ],
+      "size": [
+        618.6831665039062,
+        393.16241455078125
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 44
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 31,
+      "type": "Hy3DMultiViewsGenerator",
+      "pos": [
+        -305.7701416015625,
+        896.8567504882812
+      ],
+      "size": [
+        331.2825622558594,
+        175.0399932861328
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 39
+        },
+        {
+          "name": "camera_config",
+          "type": "HY3D21CAMERA",
+          "link": 63
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 41
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipeline",
+          "type": "HY3DPIPELINE",
+          "links": [
+            42
+          ]
+        },
+        {
+          "name": "albedo",
+          "type": "IMAGE",
+          "links": [
+            43,
+            44
+          ]
+        },
+        {
+          "name": "mr",
+          "type": "IMAGE",
+          "links": [
+            45,
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Hy3DMultiViewsGenerator",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        768,
+        10,
+        3,
+        2048
+      ]
+    },
+    {
+      "id": 4,
+      "type": "LoadImage",
+      "pos": [
+        -778.4798583984375,
+        1104.065185546875
+      ],
+      "size": [
+        413.6576232910156,
+        410.630615234375
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            41
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Image_04203_.png",
+        "image"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "Hy3DLoadMesh",
+      "pos": [
+        -638.3656005859375,
+        766.2890625
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            39
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-hunyan3dwrapper",
+        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
+        "Node name for S&R": "Hy3DLoadMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "C:\\Git\\ComfyUI\\output\\FuturisticSoldier_00001_.glb"
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Hy3DInPaint",
+      "pos": [
+        410.3959655761719,
+        879.5994262695312
+      ],
+      "size": [
+        223.405517578125,
+        142
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipeline",
+          "type": "HY3DPIPELINE",
+          "link": 25
+        },
+        {
+          "name": "albedo",
+          "type": "NPARRAY",
+          "link": 54
+        },
+        {
+          "name": "albedo_mask",
+          "type": "NPARRAY",
+          "link": 55
+        },
+        {
+          "name": "mr",
+          "type": "NPARRAY",
+          "link": 56
+        },
+        {
+          "name": "mr_mask",
+          "type": "NPARRAY",
+          "link": 57
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipeline",
+          "type": "HY3DPIPELINE",
+          "links": null
+        },
+        {
+          "name": "albedo",
+          "type": "IMAGE",
+          "links": [
+            59
+          ]
+        },
+        {
+          "name": "mr",
+          "type": "IMAGE",
+          "links": [
+            60
+          ]
+        },
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": null
+        },
+        {
+          "name": "output_glb_path",
+          "type": "STRING",
+          "links": [
+            58
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Hy3DInPaint",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "futuristicsoldier_2048"
+      ]
+    },
+    {
+      "id": 40,
+      "type": "Hy3D21CameraConfig",
+      "pos": [
+        -681.2940063476562,
+        915.2963256835938
+      ],
+      "size": [
+        299.1197204589844,
+        130
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "camera_config",
+          "type": "HY3D21CAMERA",
+          "links": [
+            63,
+            64
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Hy3D21CameraConfig",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "0, 90, 180, 270, 0, 180",
+        "0, 0, 0, 0, 90, -90",
+        "1, 0.1, 0.5, 0.1, 0.05, 0.05",
+        1
+      ]
+    }
+  ],
+  "links": [
+    [
+      25,
+      9,
+      0,
+      20,
+      0,
+      "HY3DPIPELINE"
+    ],
+    [
+      39,
+      3,
+      0,
+      31,
+      0,
+      "TRIMESH"
+    ],
+    [
+      41,
+      4,
+      0,
+      31,
+      2,
+      "IMAGE"
+    ],
+    [
+      42,
+      31,
+      0,
+      9,
+      0,
+      "HY3DPIPELINE"
+    ],
+    [
+      43,
+      31,
+      1,
+      9,
+      2,
+      "IMAGE"
+    ],
+    [
+      44,
+      31,
+      1,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      45,
+      31,
+      2,
+      9,
+      3,
+      "IMAGE"
+    ],
+    [
+      46,
+      31,
+      2,
+      11,
+      0,
+      "IMAGE"
+    ],
+    [
+      54,
+      9,
+      1,
+      20,
+      1,
+      "NPARRAY"
+    ],
+    [
+      55,
+      9,
+      2,
+      20,
+      2,
+      "NPARRAY"
+    ],
+    [
+      56,
+      9,
+      3,
+      20,
+      3,
+      "NPARRAY"
+    ],
+    [
+      57,
+      9,
+      4,
+      20,
+      4,
+      "NPARRAY"
+    ],
+    [
+      58,
+      20,
+      4,
+      36,
+      1,
+      "STRING"
+    ],
+    [
+      59,
+      20,
+      1,
+      37,
+      0,
+      "IMAGE"
+    ],
+    [
+      60,
+      20,
+      2,
+      38,
+      0,
+      "IMAGE"
+    ],
+    [
+      63,
+      40,
+      0,
+      31,
+      1,
+      "HY3D21CAMERA"
+    ],
+    [
+      64,
+      40,
+      0,
+      9,
+      1,
+      "HY3D21CAMERA"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "ds": {
+      "scale": 0.6830134553650705,
+      "offset": [
+        905.0083068375149,
+        -382.854234154758
+      ]
+    },
+    "links_added_by_ue": [],
+    "frontendVersion": "1.22.2"
+  },
+  "version": 0.4
+}

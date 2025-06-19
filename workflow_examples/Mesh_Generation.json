@@ -1,0 +1,282 @@
+{
+  "id": "bd901513-a1e8-42ca-8191-2392cbbb0666",
+  "revision": 0,
+  "last_node_id": 11,
+  "last_link_id": 11,
+  "nodes": [
+    {
+      "id": 9,
+      "type": "Hy3DPostprocessMesh",
+      "pos": [
+        -492.91180419921875,
+        581.75390625
+      ],
+      "size": [
+        306.763671875,
+        154
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-hunyan3dwrapper",
+        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
+        "Node name for S&R": "Hy3DPostprocessMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        true,
+        true,
+        true,
+        200000,
+        false
+      ]
+    },
+    {
+      "id": 11,
+      "type": "Preview3D",
+      "pos": [
+        -874.9783935546875,
+        787.0872192382812
+      ],
+      "size": [
+        652.2666625976562,
+        618.9332885742188
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "camera_info",
+          "shape": 7,
+          "type": "LOAD3D_CAMERA",
+          "link": null
+        },
+        {
+          "name": "model_file",
+          "type": "STRING",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": 11
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "Preview3D",
+        "widget_ue_connectable": {},
+        "Last Time Model File": "FuturisticSoldier_00001_.glb",
+        "Camera Info": {
+          "position": {
+            "x": 0.1500448978927136,
+            "y": 3.2013523575550105,
+            "z": 9.566533216595614
+          },
+          "target": {
+            "x": 0,
+            "y": 2.5,
+            "z": 0
+          },
+          "zoom": 1,
+          "cameraType": "perspective"
+        },
+        "Material Mode": "normal"
+      },
+      "widgets_values": [
+        "FuturisticSoldier_00001_.glb",
+        ""
+      ]
+    },
+    {
+      "id": 8,
+      "type": "Hy3DMeshGenerator",
+      "pos": [
+        -869.8450927734375,
+        587.62060546875
+      ],
+      "size": [
+        306.1265563964844,
+        130
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Hy3DMeshGenerator",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "hunyuan3d-dit-v2-1-fp16.ckpt",
+        50,
+        7.5,
+        256
+      ]
+    },
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [
+        -1529.844970703125,
+        584.6873168945312
+      ],
+      "size": [
+        616.5467529296875,
+        671.1333618164062
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Image_04203_.png",
+        "image"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "Hy3DExportMesh",
+      "pos": [
+        -110.11182403564453,
+        586.8873901367188
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "glb_path",
+          "type": "STRING",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-hunyan3dwrapper",
+        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
+        "Node name for S&R": "Hy3DExportMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "FuturisticSoldier",
+        "glb",
+        true
+      ]
+    }
+  ],
+  "links": [
+    [
+      8,
+      3,
+      0,
+      8,
+      0,
+      "IMAGE"
+    ],
+    [
+      9,
+      8,
+      0,
+      9,
+      0,
+      "TRIMESH"
+    ],
+    [
+      10,
+      9,
+      0,
+      10,
+      0,
+      "TRIMESH"
+    ],
+    [
+      11,
+      10,
+      0,
+      11,
+      1,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "ds": {
+      "scale": 0.8264462809917354,
+      "offset": [
+        1633.0606896034406,
+        -436.21160836794695
+      ]
+    },
+    "links_added_by_ue": [],
+    "frontendVersion": "1.22.2"
+  },
+  "version": 0.4
+}
