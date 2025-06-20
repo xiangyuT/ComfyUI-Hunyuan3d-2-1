@@ -181,7 +181,8 @@ class Hy3DMultiViewsGenerator:
                 "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
                 "steps": ("INT", {"default": 10, "min": 1, "max": 100, "step": 1, "tooltip": "Number of steps"}),
                 "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
-                "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512})
+                "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512}),
+                "unwrap_mesh": ("BOOLEAN", {"default":True}),
             },
         }
 
@@ -190,7 +191,7 @@ class Hy3DMultiViewsGenerator:
     FUNCTION = "genmultiviews"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size):
+    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size, unwrap_mesh):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
         
@@ -201,7 +202,7 @@ class Hy3DMultiViewsGenerator:
         
         temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")       
         
-        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale)
+        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh)
         
         albedo_tensor = []
         mr_tensor = []
@@ -409,7 +410,11 @@ class Hy3D21VAEDecode:
                 "num_chunks": ("INT", {"default": 8000, "min": 1, "max": 10000000, "step": 1, "tooltip": "Number of chunks to process at once, higher values use more memory, but make the process faster"}),
                 "mc_level": ("FLOAT", {"default": 0, "min": -1.0, "max": 1.0, "step": 0.0001}),
                 "mc_algo": (["mc", "dmc"], {"default": "mc"}),
-            }
+            },
+            "optional": {
+                "enable_flash_vdm": ("BOOLEAN", {"default": True})
+
+            }            
         }
 
     RETURN_TYPES = ("TRIMESH",)
@@ -417,11 +422,13 @@ class Hy3D21VAEDecode:
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def process(self, vae, latents, box_v, octree_resolution, mc_level, num_chunks, mc_algo):
+    def process(self, vae, latents, box_v, octree_resolution, mc_level, num_chunks, mc_algo, enable_flash_vdm):
         device = mm.get_torch_device()
         offload_device = mm.unet_offload_device()
 
         vae.to(device)
+        
+        vae.enable_flashvdm_decoder(enabled=enable_flash_vdm, mc_algo=mc_algo)
         
         latents = vae.decode(latents)
         outputs = vae.latents2mesh(

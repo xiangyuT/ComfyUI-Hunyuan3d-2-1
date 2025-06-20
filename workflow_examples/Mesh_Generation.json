@@ -95,7 +95,7 @@
       ],
       "size": [
         288.7496032714844,
-        174
+        198
       ],
       "flags": {},
       "order": 3,
@@ -132,48 +132,7 @@
         256,
         64000,
         0,
-        "mc"
-      ]
-    },
-    {
-      "id": 8,
-      "type": "Hy3DExportMesh",
-      "pos": [
-        554.5269775390625,
-        883.3196411132812
-      ],
-      "size": [
-        270,
-        106
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "trimesh",
-          "type": "TRIMESH",
-          "link": 4
-        }
-      ],
-      "outputs": [
-        {
-          "name": "glb_path",
-          "type": "STRING",
-          "links": [
-            9
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-hunyan3dwrapper",
-        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
-        "Node name for S&R": "Hy3DExportMesh",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "Test",
-        "glb",
+        "mc",
         true
       ]
     },
@@ -222,48 +181,6 @@
       ]
     },
     {
-      "id": 11,
-      "type": "Preview3D",
-      "pos": [
-        168.53660583496094,
-        1132.660400390625
-      ],
-      "size": [
-        618.2839965820312,
-        604.1272583007812
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "camera_info",
-          "shape": 7,
-          "type": "LOAD3D_CAMERA",
-          "link": null
-        },
-        {
-          "name": "model_file",
-          "type": "STRING",
-          "widget": {
-            "name": "model_file"
-          },
-          "link": 9
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.41",
-        "Node name for S&R": "Preview3D",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "",
-        ""
-      ]
-    },
-    {
       "id": 4,
       "type": "Hy3D21VAELoader",
       "pos": [
@@ -295,6 +212,105 @@
       },
       "widgets_values": [
         "Hunyuan3D-vae-v2-1-fp16.ckpt"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "Preview3D",
+      "pos": [
+        165.87460327148438,
+        1122.8997802734375
+      ],
+      "size": [
+        618.2839965820312,
+        604.1272583007812
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "camera_info",
+          "shape": 7,
+          "type": "LOAD3D_CAMERA",
+          "link": null
+        },
+        {
+          "name": "model_file",
+          "type": "STRING",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": 9
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "Preview3D",
+        "widget_ue_connectable": {},
+        "Last Time Model File": "Test_Flash_00001_.glb",
+        "Camera Info": {
+          "position": {
+            "x": 2.854849848890356,
+            "y": 4.212072809016066,
+            "z": 7.7399474480411925
+          },
+          "target": {
+            "x": 0,
+            "y": 2.5,
+            "z": 0
+          },
+          "zoom": 1,
+          "cameraType": "perspective"
+        }
+      },
+      "widgets_values": [
+        "Test_Flash_00001_.glb",
+        ""
+      ]
+    },
+    {
+      "id": 8,
+      "type": "Hy3DExportMesh",
+      "pos": [
+        554.5269775390625,
+        883.3196411132812
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "glb_path",
+          "type": "STRING",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-hunyan3dwrapper",
+        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
+        "Node name for S&R": "Hy3DExportMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Test_Flash",
+        "glb",
+        true
       ]
     }
   ],
@@ -355,8 +371,8 @@
     "ds": {
       "scale": 0.7513148009015777,
       "offset": [
-        1048.8848194534821,
-        -655.2748516306491
+        1122.533540278678,
+        -683.669531836948
       ]
     },
     "links_added_by_ue": [],
