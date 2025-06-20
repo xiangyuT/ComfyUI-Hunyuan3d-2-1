@@ -104,7 +104,10 @@ def tensor2pil(image):
 
 # PIL to Tensor
 def pil2tensor(image):
-    return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)    
+    return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0) 
+
+def numpy2pil(image):
+    return Image.fromarray(np.clip(255. * image.squeeze(), 0, 255).astype(np.uint8))    
 
 def convert_pil_images_to_tensor(images):
     tensor_array = []
@@ -495,6 +498,57 @@ class Hy3D21VAEDecode:
         print(f"Decoded mesh with {mesh_output.vertices.shape[0]} vertices and {mesh_output.faces.shape[0]} faces")
         
         return (mesh_output, )        
+        
+class Hy3D21ResizeImages:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "width": ("INT", {"default":1024, "min":16, "max":8192} ),
+                "height": ("INT", {"default":1024, "min":16, "max":8192} ),
+                "sampling": (["NEAREST","LANCZOS","BILINEAR","BICUBIC","BOX","HAMMING"], {"default":"BICUBIC"})
+            },          
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, images, width, height, sampling):        
+        if sampling=='NEAREST':
+            resampling = Image.Resampling.NEAREST
+        elif sampling=='LANCZOS':
+            resampling = Image.Resampling.LANCZOS
+        elif sampling=='BILINEAR':
+            resampling = Image.Resampling.BILINEAR
+        elif sampling=='BICUBIC':
+            resampling = Image.Resampling.BICUBIC
+        elif sampling=='BOX':
+            resampling = Image.Resampling.BOX
+        elif sampling=='HAMMING':
+            resampling = Image.Resampling.HAMMING
+        else:
+            raise Exception('Unknown sampling')
+        
+        if isinstance(images, List):
+            for i in range(len(images)):
+                if isinstance(images[i], torch.Tensor):
+                    images[i] = tensor2pil(images[i])
+                images[i] = images[i].resize((width,height), resampling)
+                images[i] = pil2tensor(images[i])
+        elif isinstance(images, torch.Tensor):
+            images = tensor2pil(images)
+            images = images.resize((width,height), resampling)
+            images = pil2tensor(images)
+        elif isinstance(images, Image):
+            images = images.resize((width,height), resampling)
+            images = pil2tensor(images)
+        else:
+            raise Exception("Unsupported images format")                     
+        
+        return (images, )
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -505,6 +559,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21VAELoader": Hy3D21VAELoader,
     "Hy3D21VAEDecode": Hy3D21VAEDecode,
     "Hy3D21VAEConfig": Hy3D21VAEConfig,
+    "Hy3D21ResizeImages": Hy3D21ResizeImages,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -515,5 +570,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21CameraConfig": "Hunyuan 3D 2.1 Camera Config",
     "Hy3D21VAELoader": "Hunyuan 3D 2.1 VAE Loader",
     "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder",
-    "Hy3D21VAEConfig": "Hunyuan 3D 2.1 VAE Config"
+    "Hy3D21VAEConfig": "Hunyuan 3D 2.1 VAE Config",
+    "Hy3D21ResizeImages": "Hunyuan 3D 2.1 Resize Images"
     }
