@@ -183,6 +183,7 @@ class Hy3DMultiViewsGenerator:
                 "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
                 "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512}),
                 "unwrap_mesh": ("BOOLEAN", {"default":True}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
         }
 
@@ -191,7 +192,7 @@ class Hy3DMultiViewsGenerator:
     FUNCTION = "genmultiviews"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size, unwrap_mesh):
+    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size, unwrap_mesh, seed):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
         
@@ -202,7 +203,7 @@ class Hy3DMultiViewsGenerator:
         
         temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")       
         
-        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh)
+        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
         albedo_tensor = []
         mr_tensor = []
@@ -346,6 +347,9 @@ class Hy3D21VAELoader:
             "required": {
                 "model_name": (folder_paths.get_filename_list("vae"), {"tooltip": "These models are loaded from 'ComfyUI/models/vae'"}),
             },
+            "optional":{
+                "vae_config": ("HY3D21VAECONFIG",),
+            }
         }
 
     RETURN_TYPES = ("HY3DVAE",)
@@ -353,50 +357,93 @@ class Hy3D21VAELoader:
     FUNCTION = "loadmodel"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def loadmodel(self, model_name):
+    def loadmodel(self, model_name, vae_config=None):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
 
         model_path = folder_paths.get_full_path("vae", model_name)
 
         vae_sd = load_torch_file(model_path)
-        geo_decoder_mlp_expand_ratio: 4
-  
-        mlp_expand_ratio = 4
-        downsample_ratio = 1
-        geo_decoder_ln_post = True
-        # if "geo_decoder.ln_post.weight" not in vae_sd:
-            # log.info("Turbo VAE detected")
-            # geo_decoder_ln_post = False
-            # mlp_expand_ratio = 1
-            # downsample_ratio = 2
-            
+        
+        if(vae_config==None):
+            vae_config = {
+                'num_latents': 4096,
+                'embed_dim': 64,
+                'num_freqs': 8,
+                'include_pi': False,
+                'heads': 16,
+                'width': 1024,
+                'num_encoder_layers': 8,
+                'num_decoder_layers': 16,
+                'qkv_bias': False,
+                'qk_norm': True,
+                'scale_factor': 1.0039506158752403,
+                'geo_decoder_mlp_expand_ratio': 4,
+                'geo_decoder_downsample_ratio': 1,
+                'geo_decoder_ln_post': True,
+                'point_feats': 4,
+                'pc_size': 81920,
+                'pc_sharpedge_size': 0
+            }
 
-        config = {
-            'num_latents': 4096,
-            'embed_dim': 64,
-            'num_freqs': 8,
-            'include_pi': False,
-            'heads': 16,
-            'width': 1024,
-            'num_encoder_layers': 8,
-            'num_decoder_layers': 16,
-            'qkv_bias': False,
-            'qk_norm': True,
-            'scale_factor': 1.0039506158752403,
-            'geo_decoder_mlp_expand_ratio': mlp_expand_ratio,
-            'geo_decoder_downsample_ratio': downsample_ratio,
-            'geo_decoder_ln_post': geo_decoder_ln_post,
-            'point_feats': 4,
-            'pc_size': 81920,
-            'pc_sharpedge_size': 0
-        }
-
-        vae = ShapeVAE(**config)
+        vae = ShapeVAE(**vae_config)
         vae.load_state_dict(vae_sd)
         vae.eval().to(torch.float16)
         
         return (vae,)   
+        
+class Hy3D21VAEConfig:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "num_latents": ("INT", {"default": 4096, "min":0, "max":256000}),
+                "embed_dim": ("INT", {"default": 64, "min":0, "max":256000}),
+                "num_freqs": ("INT", {"default": 8, "min":0, "max":256000}),
+                "include_pi": ("BOOLEAN", {"default": False}),
+                "heads": ("INT", {"default":16, "min":0, "max":256000}),
+                "width": ("INT", {"default":1024, "min":0, "max":256000}),
+                "num_encoder_layers": ("INT", {"default":8, "min":0, "max":256000}),
+                "num_decoder_layers": ("INT", {"default":16, "min":0, "max":256000}),
+                "qkv_bias": ("BOOLEAN", {"default":False}),
+                "qk_norm": ("BOOLEAN", {"default":True}),
+                "scale_factor": ("FLOAT", {"default":1.0039506158752403}),
+                "geo_decoder_mlp_expand_ratio": ("INT", {"default":4, "min":0, "max":256000}),
+                "geo_decoder_downsample_ratio": ("INT", {"default":1, "min":0, "max":256000}),
+                "geo_decoder_ln_post": ("BOOLEAN", {"default":True}),
+                "point_feats": ("INT", {"default":4, "min":0, "max":256000}),
+                "pc_size": ("INT", {"default":81920, "min":0, "max":256000}),
+                "pc_sharpedge_size": ("INT", {"default":0, "min":0, "max":256000}),
+            },
+        }
+
+    RETURN_TYPES = ("HY3D21VAECONFIG",)
+    RETURN_NAMES = ("vae_config",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, num_latents, embed_dim, num_freqs, include_pi, heads, width, num_encoder_layers, num_decoder_layers, qkv_bias, qk_norm, scale_factor, geo_decoder_mlp_expand_ratio, geo_decoder_downsample_ratio, geo_decoder_ln_post, point_feats, pc_size, pc_sharpedge_size):
+        vae_config = {
+            "num_latents": num_latents,
+            "embed_dim": embed_dim,
+            "num_freqs": num_freqs,
+            "include_pi": include_pi,
+            "heads":heads,
+            "width":width,
+            "num_encoder_layers":num_encoder_layers,
+            "num_decoder_layers":num_decoder_layers,
+            "qkv_bias":qkv_bias,
+            "qk_norm":qk_norm,
+            "scale_factor":scale_factor,
+            "geo_decoder_mlp_expand_ratio":geo_decoder_mlp_expand_ratio,
+            "geo_decoder_downsample_ratio":geo_decoder_downsample_ratio,
+            "geo_decoder_ln_post":geo_decoder_ln_post,
+            "point_feats":point_feats,
+            "pc_size":pc_size,
+            "pc_sharpedge_size":pc_sharpedge_size
+            }
+        
+        return (vae_config,)        
 
 class Hy3D21VAEDecode:
     @classmethod
@@ -413,7 +460,6 @@ class Hy3D21VAEDecode:
             },
             "optional": {
                 "enable_flash_vdm": ("BOOLEAN", {"default": True})
-
             }            
         }
 
@@ -456,6 +502,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21CameraConfig": Hy3D21CameraConfig,
     "Hy3D21VAELoader": Hy3D21VAELoader,
     "Hy3D21VAEDecode": Hy3D21VAEDecode,
+    "Hy3D21VAEConfig": Hy3D21VAEConfig,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -465,5 +512,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3DInPaint": "Hunyuan 3D 2.1 InPaint",
     "Hy3D21CameraConfig": "Hunyuan 3D 2.1 Camera Config",
     "Hy3D21VAELoader": "Hunyuan 3D 2.1 VAE Loader",
-    "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder"
+    "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder",
+    "Hy3D21VAEConfig": "Hunyuan 3D 2.1 VAE Config"
     }
