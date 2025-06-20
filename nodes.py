@@ -146,6 +146,8 @@ class Hy3DMeshGenerator:
     def loadmodel(self, model, image, steps, guidance_scale, seed):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
+        
+        seed = seed % (2**32)
 
         from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
         #from .hy3dshape.hy3dshape.rembg import BackgroundRemover
@@ -200,6 +202,8 @@ class Hy3DMultiViewsGenerator:
     def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size, unwrap_mesh, seed):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
+        
+        seed = seed % (2**32)
         
         conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)
         paint_pipeline = Hunyuan3DPaintPipeline(conf)
