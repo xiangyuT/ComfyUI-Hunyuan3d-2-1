@@ -131,6 +131,7 @@ class Hy3DMeshGenerator:
                 "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
                 "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
                 "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
         }
 
@@ -139,7 +140,7 @@ class Hy3DMeshGenerator:
     FUNCTION = "loadmodel"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def loadmodel(self, model, image, steps, guidance_scale):
+    def loadmodel(self, model, image, steps, guidance_scale, seed):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
 
@@ -165,7 +166,8 @@ class Hy3DMeshGenerator:
         latents = self.pipeline(
             image=image,
             num_inference_steps=steps,
-            guidance_scale=guidance_scale
+            guidance_scale=guidance_scale,
+            generator=torch.manual_seed(seed)
             )
         
         return (latents,)
