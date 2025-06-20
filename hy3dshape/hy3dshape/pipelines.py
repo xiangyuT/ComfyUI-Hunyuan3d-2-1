@@ -784,9 +784,4 @@ class Hunyuan3DDiTFlowMatchingPipeline(Hunyuan3DDiTPipeline):
                     step_idx = i // getattr(self.scheduler, "order", 1)
                     callback(step_idx, t, outputs)
 
-        return self._export(
-            latents,
-            output_type,
-            box_v, mc_level, num_chunks, octree_resolution, mc_algo,
-            enable_pbar=enable_pbar,
-        )
+        return latents

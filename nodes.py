@@ -27,6 +27,7 @@ from .hy3dpaint.utils.image_super_utils import imageSuperNet
 from .hy3dpaint.utils.uvwrap_utils import mesh_uv_wrap
 from .hy3dpaint.convert_utils import create_glb_with_pbr_materials
 from .hy3dpaint.textureGenPipeline import Hunyuan3DPaintPipeline, Hunyuan3DPaintConfig
+from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
 import folder_paths
 
@@ -130,16 +131,15 @@ class Hy3DMeshGenerator:
                 "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
                 "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
                 "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
-                "octree_resolution": ("INT", {"default": 384, "min": 32, "max": 1024, "step": 32, "tooltip": "Octree resolution"}),
             },
         }
 
-    RETURN_TYPES = ("TRIMESH", )
-    RETURN_NAMES = ("trimesh",)
+    RETURN_TYPES = ("HY3DLATENT", )
+    RETURN_NAMES = ("latents",)
     FUNCTION = "loadmodel"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def loadmodel(self, model, image, steps, guidance_scale, octree_resolution):
+    def loadmodel(self, model, image, steps, guidance_scale):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
 
@@ -162,14 +162,13 @@ class Hy3DMeshGenerator:
             
         image = tensor2pil(image)
         
-        mesh = self.pipeline(
+        latents = self.pipeline(
             image=image,
             num_inference_steps=steps,
-            guidance_scale=guidance_scale,
-            octree_resolution=octree_resolution
-            )[0]
+            guidance_scale=guidance_scale
+            )
         
-        return (mesh,)
+        return (latents,)
         
 class Hy3DMultiViewsGenerator:
     @classmethod
@@ -178,7 +177,7 @@ class Hy3DMultiViewsGenerator:
             "required": {
                 "trimesh": ("TRIMESH",),
                 "camera_config": ("HY3D21CAMERA",),
-                "view_size": ("INT", {"default": 512, "min": 512, "max":768, "step":256}),
+                "view_size": ("INT", {"default": 512, "min": 512, "max":1024, "step":256}),
                 "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
                 "steps": ("INT", {"default": 10, "min": 1, "max": 100, "step": 1, "tooltip": "Number of steps"}),
                 "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
@@ -338,6 +337,109 @@ class Hy3D21CameraConfig:
             }
         
         return (camera_config,)
+        
+class Hy3D21VAELoader:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (folder_paths.get_filename_list("vae"), {"tooltip": "These models are loaded from 'ComfyUI/models/vae'"}),
+            },
+        }
+
+    RETURN_TYPES = ("HY3DVAE",)
+    RETURN_NAMES = ("vae",)
+    FUNCTION = "loadmodel"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def loadmodel(self, model_name):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+
+        model_path = folder_paths.get_full_path("vae", model_name)
+
+        vae_sd = load_torch_file(model_path)
+        geo_decoder_mlp_expand_ratio: 4
+  
+        mlp_expand_ratio = 4
+        downsample_ratio = 1
+        geo_decoder_ln_post = True
+        # if "geo_decoder.ln_post.weight" not in vae_sd:
+            # log.info("Turbo VAE detected")
+            # geo_decoder_ln_post = False
+            # mlp_expand_ratio = 1
+            # downsample_ratio = 2
+            
+
+        config = {
+            'num_latents': 4096,
+            'embed_dim': 64,
+            'num_freqs': 8,
+            'include_pi': False,
+            'heads': 16,
+            'width': 1024,
+            'num_encoder_layers': 8,
+            'num_decoder_layers': 16,
+            'qkv_bias': False,
+            'qk_norm': True,
+            'scale_factor': 1.0039506158752403,
+            'geo_decoder_mlp_expand_ratio': mlp_expand_ratio,
+            'geo_decoder_downsample_ratio': downsample_ratio,
+            'geo_decoder_ln_post': geo_decoder_ln_post,
+            'point_feats': 4,
+            'pc_size': 81920,
+            'pc_sharpedge_size': 0
+        }
+
+        vae = ShapeVAE(**config)
+        vae.load_state_dict(vae_sd)
+        vae.eval().to(torch.float16)
+        
+        return (vae,)   
+
+class Hy3D21VAEDecode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "vae": ("HY3DVAE",),
+                "latents": ("HY3DLATENT", ),
+                "box_v": ("FLOAT", {"default": 1.01, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "octree_resolution": ("INT", {"default": 384, "min": 8, "max": 4096, "step": 8}),
+                "num_chunks": ("INT", {"default": 8000, "min": 1, "max": 10000000, "step": 1, "tooltip": "Number of chunks to process at once, higher values use more memory, but make the process faster"}),
+                "mc_level": ("FLOAT", {"default": 0, "min": -1.0, "max": 1.0, "step": 0.0001}),
+                "mc_algo": (["mc", "dmc"], {"default": "mc"}),
+            }
+        }
+
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, vae, latents, box_v, octree_resolution, mc_level, num_chunks, mc_algo):
+        device = mm.get_torch_device()
+        offload_device = mm.unet_offload_device()
+
+        vae.to(device)
+        
+        latents = vae.decode(latents)
+        outputs = vae.latents2mesh(
+            latents,
+            output_type='trimesh',
+            bounds=box_v,
+            mc_level=mc_level,
+            num_chunks=num_chunks,
+            octree_resolution=octree_resolution,
+            mc_algo=mc_algo,
+            enable_pbar=True
+        )[0]
+        
+        outputs.mesh_f = outputs.mesh_f[:, ::-1]
+        mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
+        print(f"Decoded mesh with {mesh_output.vertices.shape[0]} vertices and {mesh_output.faces.shape[0]} faces")
+        
+        return (mesh_output, )        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -345,6 +447,8 @@ NODE_CLASS_MAPPINGS = {
     "Hy3DBakeMultiViews": Hy3DBakeMultiViews,
     "Hy3DInPaint": Hy3DInPaint,
     "Hy3D21CameraConfig": Hy3D21CameraConfig,
+    "Hy3D21VAELoader": Hy3D21VAELoader,
+    "Hy3D21VAEDecode": Hy3D21VAEDecode,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -352,5 +456,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3DMultiViewsGenerator": "Hunyuan 3D 2.1 MultiViews Generator",
     "Hy3DBakeMultiViews": "Hunyuan 3D 2.1 Bake MultiViews",
     "Hy3DInPaint": "Hunyuan 3D 2.1 InPaint",
-    "Hy3D21CameraConfig": "Hunyuan 3D 2.1 Camera Config"
+    "Hy3D21CameraConfig": "Hunyuan 3D 2.1 Camera Config",
+    "Hy3D21VAELoader": "Hunyuan 3D 2.1 VAE Loader",
+    "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder"
     }
