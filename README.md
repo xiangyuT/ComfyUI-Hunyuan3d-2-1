@@ -2,7 +2,7 @@
 # ComfyUI wrapper for [Hunyuan3D-2.1]([https://github.com/Tencent/Hunyuan3D-2](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1))
 
 ## Models
-Main model, original: [https://huggingface.co/tencent/Hunyuan3D-2/blob/main/hunyuan3d-dit-v2-0/model.ckpt](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main)
+Main model, original: [https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main)
 
 Hunyuan3d-dit-v2-1 checkpoint to be installed in diffusion_models folder
 
