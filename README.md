@@ -1,6 +1,8 @@
 
 # ComfyUI wrapper for [Hunyuan3D-2.1]([https://github.com/Tencent/Hunyuan3D-2](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1))
 
+GitHub: [https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
+
 ## Models
 Main model, original: [https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main)
 
