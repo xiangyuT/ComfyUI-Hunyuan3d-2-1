@@ -10,13 +10,6 @@ Hunyuan3d-vae-v2-1 checkpoint to be installed in vae folder
 
 
 # Installation
-Dependencies, in your python env:
-
-`pip install -r requirements.txt`
-
-or with portable:
-
-`python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\requirements.txt`
 
 For the texturegen part compilation is needed
 
