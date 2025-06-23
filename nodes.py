@@ -14,6 +14,7 @@ import re
 import numpy as np
 import torch.nn.functional as F
 import trimesh as Trimesh
+import gc
 from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
 from typing import Union, Optional, Tuple, List, Any, Callable
 
@@ -139,7 +140,7 @@ class Hy3DMeshGenerator:
             },
         }
 
-    RETURN_TYPES = ("HY3DLATENT", )
+    RETURN_TYPES = ("HY3DLATENT",)
     RETURN_NAMES = ("latents",)
     FUNCTION = "loadmodel"
     CATEGORY = "Hunyuan3D21Wrapper"
@@ -155,11 +156,11 @@ class Hy3DMeshGenerator:
         #import torchvision.transforms as T
 
         model_path = folder_paths.get_full_path("diffusion_models", model)
-        if not hasattr(self, "pipeline"):
-            self.pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
-                config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
-                ckpt_path=model_path,
-                offload_device=offload_device)
+        
+        pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
+            config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
+            ckpt_path=model_path,
+            offload_device=offload_device)
         
         # to_pil = T.ToPILImage()
         # image = to_pil(image[0].permute(2, 0, 1))
@@ -170,12 +171,19 @@ class Hy3DMeshGenerator:
             
         image = tensor2pil(image)
         
-        latents = self.pipeline(
+        latents = pipeline(
             image=image,
             num_inference_steps=steps,
             guidance_scale=guidance_scale,
             generator=torch.manual_seed(seed)
             )
+            
+        del pipeline
+        #del vae
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect()            
         
         return (latents,)
         
@@ -212,7 +220,7 @@ class Hy3DMultiViewsGenerator:
         
         image = tensor2pil(image)
         
-        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")       
+        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
         
         albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
@@ -509,6 +517,13 @@ class Hy3D21VAEDecode:
         outputs.mesh_f = outputs.mesh_f[:, ::-1]
         mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
         print(f"Decoded mesh with {mesh_output.vertices.shape[0]} vertices and {mesh_output.faces.shape[0]} faces")
+        
+        #del pipeline
+        del vae
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect()
         
         return (mesh_output, )        
         

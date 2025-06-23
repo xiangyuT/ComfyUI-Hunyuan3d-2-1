@@ -158,15 +158,14 @@ class Hunyuan3DPaintPipeline:
 
         ##########  Style  ###########
         image_caption = "high quality"
-        image_style = []
-        for image in image_prompt:
-            #image = image.resize((512, 512))
-            if image.mode == "RGBA":
-                white_bg = Image.new("RGB", image.size, (255, 255, 255))
-                white_bg.paste(image, mask=image.getchannel("A"))
-                image = white_bg
-            image_style.append(image)
-        image_style = [image.convert("RGB") for image in image_style]
+        # image_style = []
+        # for image in image_prompt:
+            # if image.mode == "RGBA":
+                # white_bg = Image.new("RGB", image.size, (255, 255, 255))
+                # white_bg.paste(image, mask=image.getchannel("A"))
+                # image = white_bg
+            # image_style.append(image)
+        # image_style = [image.convert("RGB") for image in image_style]
 
         mm.soft_empty_cache()
         torch.cuda.empty_cache()
@@ -174,7 +173,7 @@ class Hunyuan3DPaintPipeline:
         ###########  Multiview  ##########
         print('Generating MultiViews PBR ...')
         multiviews_pbr = self.models["multiview_model"](
-            image_style,
+            image_prompt,
             normal_maps + position_maps,
             prompt=image_caption,
             custom_view_size=self.config.resolution,
