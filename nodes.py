@@ -157,7 +157,8 @@ class Hy3DMeshGenerator:
         if not hasattr(self, "pipeline"):
             self.pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
                 config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
-                ckpt_path=model_path)
+                ckpt_path=model_path,
+                offload_device=offload_device)
         
         # to_pil = T.ToPILImage()
         # image = to_pil(image[0].permute(2, 0, 1))
@@ -468,7 +469,8 @@ class Hy3D21VAEDecode:
                 "mc_algo": (["mc", "dmc"], {"default": "mc"}),
             },
             "optional": {
-                "enable_flash_vdm": ("BOOLEAN", {"default": True})
+                "enable_flash_vdm": ("BOOLEAN", {"default": True}),
+                "force_offload": ("BOOLEAN", {"default": False, "tooltip": "Offloads the model to the offload device once the process is done."}),
             }            
         }
 
@@ -477,7 +479,7 @@ class Hy3D21VAEDecode:
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def process(self, vae, latents, box_v, octree_resolution, mc_level, num_chunks, mc_algo, enable_flash_vdm):
+    def process(self, vae, latents, box_v, octree_resolution, mc_level, num_chunks, mc_algo, enable_flash_vdm, force_offload):
         device = mm.get_torch_device()
         offload_device = mm.unet_offload_device()
 
@@ -496,6 +498,8 @@ class Hy3D21VAEDecode:
             mc_algo=mc_algo,
             enable_pbar=True
         )[0]
+        if force_offload:
+            vae.to(offload_device)        
         
         outputs.mesh_f = outputs.mesh_f[:, ::-1]
         mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
