@@ -1,0 +1,8 @@
+trimesh
+pymeshlab
+pygltflib
+xatlas
+open3d
+omegaconf
+pyyaml
+configargparse
