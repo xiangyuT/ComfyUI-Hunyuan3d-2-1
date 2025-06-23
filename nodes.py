@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageSequence, ImageOps
 from torch.utils.data import Dataset
 import torch
 import shutil
@@ -14,7 +14,6 @@ import re
 import numpy as np
 import torch.nn.functional as F
 import trimesh as Trimesh
-from torchvision import transforms
 from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
 from typing import Union, Optional, Tuple, List, Any, Callable
 
@@ -30,6 +29,8 @@ from .hy3dpaint.textureGenPipeline import Hunyuan3DPaintPipeline, Hunyuan3DPaint
 from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
 import folder_paths
+import node_helpers
+import hashlib
 
 import comfy.model_management as mm
 from comfy.utils import load_torch_file, ProgressBar
@@ -130,7 +131,7 @@ class Hy3DMeshGenerator:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder",}),
+                "model": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder"}),
                 "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
                 "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
                 "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
@@ -483,6 +484,9 @@ class Hy3D21VAEDecode:
         device = mm.get_torch_device()
         offload_device = mm.unet_offload_device()
 
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+
         vae.to(device)
         
         vae.enable_flashvdm_decoder(enabled=enable_flash_vdm, mc_algo=mc_algo)
@@ -498,8 +502,9 @@ class Hy3D21VAEDecode:
             mc_algo=mc_algo,
             enable_pbar=True
         )[0]
-        if force_offload:
-            vae.to(offload_device)        
+        
+        if force_offload==True:
+            vae.to(offload_device)
         
         outputs.mesh_f = outputs.mesh_f[:, ::-1]
         mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
@@ -557,6 +562,88 @@ class Hy3D21ResizeImages:
             raise Exception("Unsupported images format")                     
         
         return (images, )
+        
+class Hy3D21LoadImageWithTransparency:
+    @classmethod
+    def INPUT_TYPES(s):
+        input_dir = folder_paths.get_input_directory()
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = folder_paths.filter_files_content_types(files, ["image"])
+        return {"required":
+                    {"image": (sorted(files), {"image_upload": True})},
+                }
+
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    RETURN_TYPES = ("IMAGE", "MASK", "IMAGE", )
+    RETURN_NAMES = ("image", "mask", "image_with_alpha")
+    FUNCTION = "load_image"
+    def load_image(self, image):
+        image_path = folder_paths.get_annotated_filepath(image)
+
+        img = node_helpers.pillow(Image.open, image_path)
+
+        output_images = []
+        output_masks = []
+        output_images_ori = []
+        w, h = None, None
+
+        excluded_formats = ['MPO']
+
+        for i in ImageSequence.Iterator(img):
+            i = node_helpers.pillow(ImageOps.exif_transpose, i)
+            
+            output_images_ori.append(pil2tensor(i))
+
+            if i.mode == 'I':
+                i = i.point(lambda i: i * (1 / 255))
+            image = i.convert("RGB")
+
+            if len(output_images) == 0:
+                w = image.size[0]
+                h = image.size[1]
+
+            if image.size[0] != w or image.size[1] != h:
+                continue
+
+            image = np.array(image).astype(np.float32) / 255.0
+            image = torch.from_numpy(image)[None,]
+            if 'A' in i.getbands():
+                mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+                mask = 1. - torch.from_numpy(mask)
+            elif i.mode == 'P' and 'transparency' in i.info:
+                mask = np.array(i.convert('RGBA').getchannel('A')).astype(np.float32) / 255.0
+                mask = 1. - torch.from_numpy(mask)
+            else:
+                mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+            output_images.append(image)
+            output_masks.append(mask.unsqueeze(0))
+
+        if len(output_images) > 1 and img.format not in excluded_formats:
+            output_image = torch.cat(output_images, dim=0)
+            output_mask = torch.cat(output_masks, dim=0)
+            output_image_ori = torch.cat(output_images_ori, dim=0)
+        else:
+            output_image = output_images[0]
+            output_mask = output_masks[0]
+            output_image_ori = output_images_ori[0]
+
+        return (output_image, output_mask, output_image_ori)
+
+    @classmethod
+    def IS_CHANGED(s, image):
+        image_path = folder_paths.get_annotated_filepath(image)
+        m = hashlib.sha256()
+        with open(image_path, 'rb') as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(s, image):
+        if not folder_paths.exists_annotated_filepath(image):
+            return "Invalid image file: {}".format(image)
+
+        return True        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -568,6 +655,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21VAEDecode": Hy3D21VAEDecode,
     "Hy3D21VAEConfig": Hy3D21VAEConfig,
     "Hy3D21ResizeImages": Hy3D21ResizeImages,
+    "Hy3D21LoadImageWithTransparency": Hy3D21LoadImageWithTransparency,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -579,5 +667,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21VAELoader": "Hunyuan 3D 2.1 VAE Loader",
     "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder",
     "Hy3D21VAEConfig": "Hunyuan 3D 2.1 VAE Config",
-    "Hy3D21ResizeImages": "Hunyuan 3D 2.1 Resize Images"
+    "Hy3D21ResizeImages": "Hunyuan 3D 2.1 Resize Images",
+    "Hy3D21LoadImageWithTransparency": "Hunyuan 3D 2.1 Load Image with Transparency"
     }

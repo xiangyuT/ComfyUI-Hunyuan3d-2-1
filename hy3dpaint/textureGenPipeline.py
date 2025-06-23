@@ -63,7 +63,7 @@ class Hunyuan3DPaintConfig:
         self.bake_mode = "back_sample"
         self.render_size = 1024
         self.texture_size = texture_size
-        self.max_selected_view_num = len(camera_azims)
+        self.max_selected_view_num = 16
         self.resolution = resolution
         self.bake_exp = 4
         self.merge_method = "fast"
