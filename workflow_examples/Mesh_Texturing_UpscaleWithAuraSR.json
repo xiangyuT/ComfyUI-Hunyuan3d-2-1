@@ -1,39 +1,9 @@
 {
-  "id": "5ad4bf3d-e612-4571-8502-0a19e6b7a824",
+  "id": "57a06f27-0bc4-4e3d-9b4d-d9d82a81966e",
   "revision": 0,
-  "last_node_id": 44,
-  "last_link_id": 72,
+  "last_node_id": 71,
+  "last_link_id": 149,
   "nodes": [
-    {
-      "id": 11,
-      "type": "PreviewImage",
-      "pos": [
-        -316.0067443847656,
-        1122.1600341796875
-      ],
-      "size": [
-        286.0066833496094,
-        385.5533752441406
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 46
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.41",
-        "Node name for S&R": "PreviewImage",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": []
-    },
     {
       "id": 9,
       "type": "Hy3DBakeMultiViews",
@@ -46,13 +16,13 @@
         146
       ],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "pipeline",
           "type": "HY3DPIPELINE",
-          "link": 42
+          "link": 110
         },
         {
           "name": "camera_config",
@@ -62,12 +32,12 @@
         {
           "name": "albedo",
           "type": "IMAGE",
-          "link": 72
+          "link": 148
         },
         {
           "name": "mr",
           "type": "IMAGE",
-          "link": 71
+          "link": 149
         }
       ],
       "outputs": [
@@ -75,35 +45,35 @@
           "name": "pipeline",
           "type": "HY3DPIPELINE",
           "links": [
-            25
+            128
           ]
         },
         {
           "name": "albedo",
           "type": "NPARRAY",
           "links": [
-            54
+            129
           ]
         },
         {
           "name": "albedo_mask",
           "type": "NPARRAY",
           "links": [
-            55
+            130
           ]
         },
         {
           "name": "mr",
           "type": "NPARRAY",
           "links": [
-            56
+            131
           ]
         },
         {
           "name": "mr_mask",
           "type": "NPARRAY",
           "links": [
-            57
+            132
           ]
         },
         {
@@ -126,63 +96,6 @@
       "widgets_values": []
     },
     {
-      "id": 36,
-      "type": "Preview3D",
-      "pos": [
-        658.7349243164062,
-        898.7421264648438
-      ],
-      "size": [
-        649.873046875,
-        600.7554321289062
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "camera_info",
-          "shape": 7,
-          "type": "LOAD3D_CAMERA",
-          "link": null
-        },
-        {
-          "name": "model_file",
-          "type": "STRING",
-          "widget": {
-            "name": "model_file"
-          },
-          "link": 58
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.41",
-        "Node name for S&R": "Preview3D",
-        "widget_ue_connectable": {},
-        "Camera Info": {
-          "position": {
-            "x": -1.2369812974767123,
-            "y": 3.591817208149596,
-            "z": 9.218106266907972
-          },
-          "target": {
-            "x": 0,
-            "y": 2.5,
-            "z": 0
-          },
-          "zoom": 1,
-          "cameraType": "perspective"
-        },
-        "Last Time Model File": "cyborg_2048.glb"
-      },
-      "widgets_values": [
-        "cyborg_2048.glb",
-        ""
-      ]
-    },
-    {
       "id": 37,
       "type": "PreviewImage",
       "pos": [
@@ -194,13 +107,43 @@
         281.72943115234375
       ],
       "flags": {},
-      "order": 10,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 59
+          "link": 135
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 65,
+      "type": "PreviewImage",
+      "pos": [
+        -318.9513854980469,
+        1180.8961181640625
+      ],
+      "size": [
+        311.0133056640625,
+        363.9933166503906
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 127
         }
       ],
       "outputs": [],
@@ -216,21 +159,21 @@
       "id": 38,
       "type": "PreviewImage",
       "pos": [
-        1032.568603515625,
-        550.2861938476562
+        1018.855224609375,
+        554.3195190429688
       ],
       "size": [
         333.2611999511719,
         296.3704528808594
       ],
       "flags": {},
-      "order": 11,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 60
+          "link": 136
         }
       ],
       "outputs": [],
@@ -243,15 +186,104 @@
       "widgets_values": []
     },
     {
-      "id": 3,
-      "type": "Hy3DLoadMesh",
+      "id": 36,
+      "type": "Preview3D",
       "pos": [
-        -638.3656005859375,
-        766.2890625
+        686.9681396484375,
+        897.9353637695312
       ],
       "size": [
-        270,
-        58
+        649.873046875,
+        600.7554321289062
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "camera_info",
+          "shape": 7,
+          "type": "LOAD3D_CAMERA",
+          "link": null
+        },
+        {
+          "name": "model_file",
+          "type": "STRING",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": 141
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "Preview3D",
+        "widget_ue_connectable": {},
+        "Camera Info": {
+          "position": {
+            "x": 2.032020874831262,
+            "y": 5.822469866184987,
+            "z": 9.745733025707953
+          },
+          "target": {
+            "x": 0,
+            "y": 2.5,
+            "z": 0
+          },
+          "zoom": 1,
+          "cameraType": "perspective"
+        },
+        "Last Time Model File": "CyberWarrior_8.glb"
+      },
+      "widgets_values": [
+        "CyberWarrior_8.glb",
+        ""
+      ]
+    },
+    {
+      "id": 64,
+      "type": "SaveImage",
+      "pos": [
+        40.015174865722656,
+        1154.2757568359375
+      ],
+      "size": [
+        579.7601928710938,
+        391.9599304199219
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 126
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.41",
+        "Node name for S&R": "SaveImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "MV"
+      ]
+    },
+    {
+      "id": 60,
+      "type": "Hy3D21LoadImageWithTransparency",
+      "pos": [
+        -856.94580078125,
+        1119.740966796875
+      ],
+      "size": [
+        485.4837951660156,
+        439.4151916503906
       ],
       "flags": {},
       "order": 0,
@@ -259,60 +291,31 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "trimesh",
-          "type": "TRIMESH",
-          "links": [
-            39
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-hunyan3dwrapper",
-        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
-        "Node name for S&R": "Hy3DLoadMesh",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "C:\\Git\\ComfyUI\\output\\Cyborg_00001_.glb"
-      ]
-    },
-    {
-      "id": 4,
-      "type": "LoadImage",
-      "pos": [
-        -778.4798583984375,
-        1104.065185546875
-      ],
-      "size": [
-        413.6576232910156,
-        410.630615234375
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "IMAGE",
+          "name": "image",
           "type": "IMAGE",
-          "links": [
-            41
-          ]
+          "links": null
         },
         {
-          "name": "MASK",
+          "name": "mask",
           "type": "MASK",
           "links": null
+        },
+        {
+          "name": "image_with_alpha",
+          "type": "IMAGE",
+          "links": [
+            118
+          ]
         }
       ],
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.41",
-        "Node name for S&R": "LoadImage",
+        "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
+        "ver": "19e77b34abcadf80a782bc34ec447b8b366773d1",
+        "Node name for S&R": "Hy3D21LoadImageWithTransparency",
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "Image_04204_.png",
+        "Image_04189_.png",
         "image"
       ]
     },
@@ -320,15 +323,15 @@
       "id": 40,
       "type": "Hy3D21CameraConfig",
       "pos": [
-        -679.8273315429688,
-        917.496337890625
+        -850.77392578125,
+        904.23291015625
       ],
       "size": [
-        299.1197204589844,
-        130
+        382.7560729980469,
+        133.63636779785156
       ],
       "flags": {},
-      "order": 2,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -336,8 +339,8 @@
           "name": "camera_config",
           "type": "HY3D21CAMERA",
           "links": [
-            63,
-            64
+            64,
+            108
           ]
         }
       ],
@@ -355,15 +358,49 @@
       ]
     },
     {
-      "id": 31,
-      "type": "Hy3DMultiViewsGenerator",
+      "id": 68,
+      "type": "Hy3D21LoadMesh",
       "pos": [
-        -305.7701416015625,
-        896.8567504882812
+        -863.2901611328125,
+        666.1615600585938
       ],
       "size": [
-        331.2825622558594,
-        175.0399932861328
+        274.2369079589844,
+        58
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            144
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
+        "ver": "b25dbd8bc1adb6e1e699c3a2740d3a2358ee4752",
+        "Node name for S&R": "Hy3D21LoadMesh",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 69,
+      "type": "Hy3D21MeshUVWrap",
+      "pos": [
+        -561.596923828125,
+        747.7962646484375
+      ],
+      "size": [
+        239.62557983398438,
+        26
       ],
       "flags": {},
       "order": 3,
@@ -372,17 +409,55 @@
         {
           "name": "trimesh",
           "type": "TRIMESH",
-          "link": 39
+          "link": 144
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            145
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
+        "ver": "b25dbd8bc1adb6e1e699c3a2740d3a2358ee4752",
+        "Node name for S&R": "Hy3D21MeshUVWrap",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 56,
+      "type": "Hy3DMultiViewsGenerator",
+      "pos": [
+        -325.9654846191406,
+        874.7482299804688
+      ],
+      "size": [
+        338.5425720214844,
+        242
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 145
         },
         {
           "name": "camera_config",
           "type": "HY3D21CAMERA",
-          "link": 63
+          "link": 108
         },
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 41
+          "link": 118
         }
       ],
       "outputs": [
@@ -390,29 +465,29 @@
           "name": "pipeline",
           "type": "HY3DPIPELINE",
           "links": [
-            42
+            110
           ]
         },
         {
           "name": "albedo",
           "type": "IMAGE",
           "links": [
-            44,
-            65
+            126,
+            146
           ]
         },
         {
           "name": "mr",
           "type": "IMAGE",
           "links": [
-            46,
-            66
+            127,
+            147
           ]
         }
       ],
       "properties": {
         "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
-        "ver": "e439689e4b67fb2af5f487ee26ef3a710be92658",
+        "ver": "19e77b34abcadf80a782bc34ec447b8b366773d1",
         "Node name for S&R": "Hy3DMultiViewsGenerator",
         "widget_ue_connectable": {}
       },
@@ -420,28 +495,31 @@
         768,
         10,
         3,
-        2048
+        2048,
+        false,
+        372455392391405,
+        "randomize"
       ]
     },
     {
-      "id": 41,
+      "id": 71,
       "type": "AuraSR.AuraSRUpscaler",
       "pos": [
-        -103.7553482055664,
-        338.51611328125
+        112.7767105102539,
+        548.146484375
       ],
       "size": [
         279.400390625,
         198
       ],
       "flags": {},
-      "order": 5,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 65
+          "link": 147
         },
         {
           "name": "transparency_mask",
@@ -455,15 +533,15 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            72
+            149
           ]
         }
       ],
       "properties": {
         "cnr_id": "aurasr-comfyui",
         "ver": "3.0.1",
-        "widget_ue_connectable": {},
-        "Node name for S&R": "AuraSR.AuraSRUpscaler"
+        "Node name for S&R": "AuraSR.AuraSRUpscaler",
+        "widget_ue_connectable": {}
       },
       "widgets_values": [
         "AuraSR-v2.safetensors",
@@ -471,28 +549,28 @@
         false,
         8,
         "default",
-        true
+        false
       ]
     },
     {
-      "id": 42,
+      "id": 70,
       "type": "AuraSR.AuraSRUpscaler",
       "pos": [
-        -105.489501953125,
-        594.3310546875
+        -223.5226593017578,
+        550.8084716796875
       ],
       "size": [
         279.400390625,
         198
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 66
+          "link": 146
         },
         {
           "name": "transparency_mask",
@@ -506,15 +584,15 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            71
+            148
           ]
         }
       ],
       "properties": {
         "cnr_id": "aurasr-comfyui",
         "ver": "3.0.1",
-        "widget_ue_connectable": {},
-        "Node name for S&R": "AuraSR.AuraSRUpscaler"
+        "Node name for S&R": "AuraSR.AuraSRUpscaler",
+        "widget_ue_connectable": {}
       },
       "widgets_values": [
         "AuraSR-v2.safetensors",
@@ -522,68 +600,63 @@
         false,
         8,
         "default",
-        true
+        false
       ]
     },
     {
-      "id": 20,
+      "id": 66,
       "type": "Hy3DInPaint",
       "pos": [
-        410.3959655761719,
-        879.5994262695312
+        366.0293273925781,
+        877.179443359375
       ],
       "size": [
-        223.405517578125,
-        142
+        270.072265625,
+        138
       ],
       "flags": {},
-      "order": 9,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "pipeline",
           "type": "HY3DPIPELINE",
-          "link": 25
+          "link": 128
         },
         {
           "name": "albedo",
           "type": "NPARRAY",
-          "link": 54
+          "link": 129
         },
         {
           "name": "albedo_mask",
           "type": "NPARRAY",
-          "link": 55
+          "link": 130
         },
         {
           "name": "mr",
           "type": "NPARRAY",
-          "link": 56
+          "link": 131
         },
         {
           "name": "mr_mask",
           "type": "NPARRAY",
-          "link": 57
+          "link": 132
         }
       ],
       "outputs": [
         {
-          "name": "pipeline",
-          "type": "HY3DPIPELINE",
-          "links": null
-        },
-        {
           "name": "albedo",
           "type": "IMAGE",
           "links": [
-            59
+            135
           ]
         },
         {
           "name": "mr",
           "type": "IMAGE",
           "links": [
-            60
+            136
           ]
         },
         {
@@ -595,164 +668,22 @@
           "name": "output_glb_path",
           "type": "STRING",
           "links": [
-            58
+            141
           ]
         }
       ],
       "properties": {
         "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
-        "ver": "e439689e4b67fb2af5f487ee26ef3a710be92658",
+        "ver": "b25dbd8bc1adb6e1e699c3a2740d3a2358ee4752",
         "Node name for S&R": "Hy3DInPaint",
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "cyborg_2048_up"
+        "Hy21_Mesh"
       ]
-    },
-    {
-      "id": 10,
-      "type": "PreviewImage",
-      "pos": [
-        -10.624388694763184,
-        1130.163818359375
-      ],
-      "size": [
-        618.6831665039062,
-        393.16241455078125
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 44
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.41",
-        "Node name for S&R": "PreviewImage",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": []
     }
   ],
   "links": [
-    [
-      25,
-      9,
-      0,
-      20,
-      0,
-      "HY3DPIPELINE"
-    ],
-    [
-      39,
-      3,
-      0,
-      31,
-      0,
-      "TRIMESH"
-    ],
-    [
-      41,
-      4,
-      0,
-      31,
-      2,
-      "IMAGE"
-    ],
-    [
-      42,
-      31,
-      0,
-      9,
-      0,
-      "HY3DPIPELINE"
-    ],
-    [
-      44,
-      31,
-      1,
-      10,
-      0,
-      "IMAGE"
-    ],
-    [
-      46,
-      31,
-      2,
-      11,
-      0,
-      "IMAGE"
-    ],
-    [
-      54,
-      9,
-      1,
-      20,
-      1,
-      "NPARRAY"
-    ],
-    [
-      55,
-      9,
-      2,
-      20,
-      2,
-      "NPARRAY"
-    ],
-    [
-      56,
-      9,
-      3,
-      20,
-      3,
-      "NPARRAY"
-    ],
-    [
-      57,
-      9,
-      4,
-      20,
-      4,
-      "NPARRAY"
-    ],
-    [
-      58,
-      20,
-      4,
-      36,
-      1,
-      "STRING"
-    ],
-    [
-      59,
-      20,
-      1,
-      37,
-      0,
-      "IMAGE"
-    ],
-    [
-      60,
-      20,
-      2,
-      38,
-      0,
-      "IMAGE"
-    ],
-    [
-      63,
-      40,
-      0,
-      31,
-      1,
-      "HY3D21CAMERA"
-    ],
     [
       64,
       40,
@@ -762,35 +693,155 @@
       "HY3D21CAMERA"
     ],
     [
-      65,
-      31,
+      108,
+      40,
+      0,
+      56,
       1,
-      41,
-      0,
-      "IMAGE"
+      "HY3D21CAMERA"
     ],
     [
-      66,
-      31,
+      110,
+      56,
+      0,
+      9,
+      0,
+      "HY3DPIPELINE"
+    ],
+    [
+      118,
+      60,
       2,
-      42,
+      56,
+      2,
+      "IMAGE"
+    ],
+    [
+      126,
+      56,
+      1,
+      64,
       0,
       "IMAGE"
     ],
     [
+      127,
+      56,
+      2,
+      65,
+      0,
+      "IMAGE"
+    ],
+    [
+      128,
+      9,
+      0,
+      66,
+      0,
+      "HY3DPIPELINE"
+    ],
+    [
+      129,
+      9,
+      1,
+      66,
+      1,
+      "NPARRAY"
+    ],
+    [
+      130,
+      9,
+      2,
+      66,
+      2,
+      "NPARRAY"
+    ],
+    [
+      131,
+      9,
+      3,
+      66,
+      3,
+      "NPARRAY"
+    ],
+    [
+      132,
+      9,
+      4,
+      66,
+      4,
+      "NPARRAY"
+    ],
+    [
+      135,
+      66,
+      0,
+      37,
+      0,
+      "IMAGE"
+    ],
+    [
+      136,
+      66,
+      1,
+      38,
+      0,
+      "IMAGE"
+    ],
+    [
+      141,
+      66,
+      3,
+      36,
+      1,
+      "STRING"
+    ],
+    [
+      144,
+      68,
+      0,
+      69,
+      0,
+      "TRIMESH"
+    ],
+    [
+      145,
+      69,
+      0,
+      56,
+      0,
+      "TRIMESH"
+    ],
+    [
+      146,
+      56,
+      1,
+      70,
+      0,
+      "IMAGE"
+    ],
+    [
+      147,
+      56,
+      2,
       71,
-      42,
+      0,
+      "IMAGE"
+    ],
+    [
+      148,
+      70,
+      0,
+      9,
+      2,
+      "IMAGE"
+    ],
+    [
+      149,
+      71,
       0,
       9,
       3,
-      "IMAGE"
-    ],
-    [
-      72,
-      41,
-      0,
-      9,
-      2,
       "IMAGE"
     ]
   ],
@@ -799,10 +850,10 @@
   "extra": {
     "ue_links": [],
     "ds": {
-      "scale": 0.6830134553650705,
+      "scale": 0.7513148009015777,
       "offset": [
-        1102.7407644511513,
-        -276.71265693023065
+        872.1633714228874,
+        -399.96166208308983
       ]
     },
     "links_added_by_ue": [],

@@ -6,3 +6,9 @@ open3d
 omegaconf
 pyyaml
 configargparse
+transformers
+diffusers
+accelerate
+pytorch-lightning
+huggingface-hub
+safetensors

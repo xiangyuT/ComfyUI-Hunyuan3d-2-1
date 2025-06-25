@@ -1,53 +1,9 @@
 {
   "id": "efcbcaf1-6f4a-4dc8-ab7e-445273887ab7",
   "revision": 0,
-  "last_node_id": 17,
-  "last_link_id": 15,
+  "last_node_id": 20,
+  "last_link_id": 21,
   "nodes": [
-    {
-      "id": 7,
-      "type": "Hy3DPostprocessMesh",
-      "pos": [
-        148.1281280517578,
-        879.7699584960938
-      ],
-      "size": [
-        306.763671875,
-        154
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "trimesh",
-          "type": "TRIMESH",
-          "link": 8
-        }
-      ],
-      "outputs": [
-        {
-          "name": "trimesh",
-          "type": "TRIMESH",
-          "links": [
-            4
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-hunyan3dwrapper",
-        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
-        "Node name for S&R": "Hy3DPostprocessMesh",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        true,
-        true,
-        true,
-        200000,
-        false
-      ]
-    },
     {
       "id": 4,
       "type": "Hy3D21VAELoader",
@@ -116,7 +72,7 @@
           "widget": {
             "name": "model_file"
           },
-          "link": 9
+          "link": 21
         }
       ],
       "outputs": [],
@@ -125,24 +81,24 @@
         "ver": "0.3.41",
         "Node name for S&R": "Preview3D",
         "widget_ue_connectable": {},
-        "Last Time Model File": "House_Hy21_00010_.glb",
+        "Last Time Model File": "CyberWarrior_00002_.glb",
         "Camera Info": {
           "position": {
-            "x": -8.190091466969944,
-            "y": 7.488159728767217,
-            "z": 12.189802665043304
+            "x": 1.9751304562515757,
+            "y": 4.819654402171892,
+            "z": 8.968481801129208
           },
           "target": {
-            "x": 0,
-            "y": 2.5,
-            "z": 0
+            "x": -0.00000371375023336331,
+            "y": 2.4999948653356014,
+            "z": 0.0000021243006839016964
           },
           "zoom": 1,
           "cameraType": "perspective"
         }
       },
       "widgets_values": [
-        "House_Hy21_00010_.glb",
+        "CyberWarrior_00002_.glb",
         ""
       ]
     },
@@ -164,7 +120,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 12
+          "link": 17
         }
       ],
       "outputs": [
@@ -186,7 +142,7 @@
         "hunyuan3d-dit-v2-1-fp16.ckpt",
         25,
         5,
-        772555829076718,
+        875328455637239,
         "randomize"
       ]
     },
@@ -194,8 +150,8 @@
       "id": 14,
       "type": "Hy3D21LoadImageWithTransparency",
       "pos": [
-        -1175.7730712890625,
-        1059.89892578125
+        -1221.150634765625,
+        1010.8911743164062
       ],
       "size": [
         462.2257385253906,
@@ -220,7 +176,7 @@
           "name": "image_with_alpha",
           "type": "IMAGE",
           "links": [
-            12
+            17
           ]
         }
       ],
@@ -231,7 +187,7 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "Image_04138_.png",
+        "Image_04189_.png",
         "image"
       ]
     },
@@ -266,7 +222,7 @@
           "name": "trimesh",
           "type": "TRIMESH",
           "links": [
-            8
+            18
           ]
         }
       ],
@@ -287,14 +243,58 @@
       ]
     },
     {
-      "id": 8,
-      "type": "Hy3DExportMesh",
+      "id": 19,
+      "type": "Hy3D21PostprocessMesh",
       "pos": [
-        554.5269775390625,
-        883.3196411132812
+        131.24319458007812,
+        868.1500854492188
       ],
       "size": [
-        270,
+        341.3726501464844,
+        154
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
+        "ver": "b25dbd8bc1adb6e1e699c3a2740d3a2358ee4752",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "Hy3D21PostprocessMesh"
+      },
+      "widgets_values": [
+        true,
+        true,
+        true,
+        200000,
+        false
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Hy3D21ExportMesh",
+      "pos": [
+        515.1377563476562,
+        874.5029907226562
+      ],
+      "size": [
+        283.5542907714844,
         106
       ],
       "flags": {},
@@ -304,7 +304,7 @@
         {
           "name": "trimesh",
           "type": "TRIMESH",
-          "link": 4
+          "link": 20
         }
       ],
       "outputs": [
@@ -312,32 +312,24 @@
           "name": "glb_path",
           "type": "STRING",
           "links": [
-            9
+            21
           ]
         }
       ],
       "properties": {
-        "cnr_id": "comfyui-hunyan3dwrapper",
-        "ver": "cbe2837e506ffb5942fda754d0f0bccf586363a8",
-        "Node name for S&R": "Hy3DExportMesh",
-        "widget_ue_connectable": {}
+        "aux_id": "visualbruno/ComfyUI-Hunyuan3d-2-1",
+        "ver": "b25dbd8bc1adb6e1e699c3a2740d3a2358ee4752",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "Hy3D21ExportMesh"
       },
       "widgets_values": [
-        "Hy21",
+        "Hy21_Mesh",
         "glb",
         true
       ]
     }
   ],
   "links": [
-    [
-      4,
-      7,
-      0,
-      8,
-      0,
-      "TRIMESH"
-    ],
     [
       5,
       4,
@@ -355,28 +347,36 @@
       "HY3DLATENT"
     ],
     [
-      8,
-      9,
-      0,
-      7,
-      0,
-      "TRIMESH"
-    ],
-    [
-      9,
-      8,
-      0,
-      11,
-      1,
-      "STRING"
-    ],
-    [
-      12,
+      17,
       14,
       2,
       10,
       0,
       "IMAGE"
+    ],
+    [
+      18,
+      9,
+      0,
+      19,
+      0,
+      "TRIMESH"
+    ],
+    [
+      20,
+      19,
+      0,
+      20,
+      0,
+      "TRIMESH"
+    ],
+    [
+      21,
+      20,
+      0,
+      11,
+      1,
+      "STRING"
     ]
   ],
   "groups": [],
@@ -386,8 +386,8 @@
     "ds": {
       "scale": 0.734576530283624,
       "offset": [
-        1282.7235424164296,
-        -668.4886208381574
+        1249.144077248663,
+        -603.1448506234091
       ]
     },
     "links_added_by_ue": [],

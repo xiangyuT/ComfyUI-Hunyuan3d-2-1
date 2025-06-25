@@ -16,7 +16,9 @@ import torch.nn.functional as F
 import trimesh as Trimesh
 import gc
 from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+from .hy3dshape.hy3dshape.postprocessors import FaceReducer, FloaterRemover, DegenerateFaceRemover
 from typing import Union, Optional, Tuple, List, Any, Callable
+from pathlib import Path
 
 #painting
 from .hy3dpaint.DifferentiableRenderer.MeshRender import MeshRender
@@ -294,10 +296,11 @@ class Hy3DInPaint:
             },
         }
 
-    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","TRIMESH", "STRING",)
-    RETURN_NAMES = ("pipeline", "albedo", "mr", "trimesh", "output_glb_path")
+    RETURN_TYPES = ("IMAGE","IMAGE","TRIMESH", "STRING",)
+    RETURN_NAMES = ("albedo", "mr", "trimesh", "output_glb_path")
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
+    OUTPUT_NODE = True
 
     def process(self, pipeline, albedo, albedo_mask, mr, mr_mask, output_mesh_name):
         
@@ -326,7 +329,13 @@ class Hy3DInPaint:
         
         output_glb_path = f"{output_mesh_name}.glb"
         
-        return (pipeline, texture_tensor, texture_mr_tensor, trimesh, output_glb_path)         
+        del pipeline
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect()        
+        
+        return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)         
         
 class Hy3D21CameraConfig:
     @classmethod
@@ -658,7 +667,121 @@ class Hy3D21LoadImageWithTransparency:
         if not folder_paths.exists_annotated_filepath(image):
             return "Invalid image file: {}".format(image)
 
-        return True        
+        return True     
+
+class Hy3D21PostprocessMesh:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "remove_floaters": ("BOOLEAN", {"default": True}),
+                "remove_degenerate_faces": ("BOOLEAN", {"default": True}),
+                "reduce_faces": ("BOOLEAN", {"default": True}),
+                "max_facenum": ("INT", {"default": 40000, "min": 1, "max": 10000000, "step": 1}),
+                "smooth_normals": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, trimesh, remove_floaters, remove_degenerate_faces, reduce_faces, max_facenum, smooth_normals):
+        new_mesh = trimesh.copy()
+        if remove_floaters:
+            new_mesh = FloaterRemover()(new_mesh)
+            print(f"Removed floaters, resulting in {new_mesh.vertices.shape[0]} vertices and {new_mesh.faces.shape[0]} faces")
+        if remove_degenerate_faces:
+            new_mesh = DegenerateFaceRemover()(new_mesh)
+            print(f"Removed degenerate faces, resulting in {new_mesh.vertices.shape[0]} vertices and {new_mesh.faces.shape[0]} faces")
+        if reduce_faces:
+            new_mesh = FaceReducer()(new_mesh, max_facenum=max_facenum)
+            print(f"Reduced faces, resulting in {new_mesh.vertices.shape[0]} vertices and {new_mesh.faces.shape[0]} faces")
+        if smooth_normals:              
+            new_mesh.vertex_normals = Trimesh.smoothing.get_vertices_normals(new_mesh)
+        
+        return (new_mesh, )
+        
+class Hy3D21ExportMesh:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "filename_prefix": ("STRING", {"default": "3D/Hy3D"}),
+                "file_format": (["glb", "obj", "ply", "stl", "3mf", "dae"],),
+            },
+            "optional": {
+                "save_file": ("BOOLEAN", {"default": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("glb_path",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    OUTPUT_NODE = True
+
+    def process(self, trimesh, filename_prefix, file_format, save_file=True):
+        full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix, folder_paths.get_output_directory())
+        output_glb_path = Path(full_output_folder, f'{filename}_{counter:05}_.{file_format}')
+        output_glb_path.parent.mkdir(exist_ok=True)
+        if save_file:
+            trimesh.export(output_glb_path, file_type=file_format)
+            relative_path = Path(subfolder) / f'{filename}_{counter:05}_.{file_format}'
+        else:
+            temp_file = Path(full_output_folder, f'hy3dtemp_.{file_format}')
+            trimesh.export(temp_file, file_type=file_format)
+            relative_path = Path(subfolder) / f'hy3dtemp_.{file_format}'
+        
+        return (str(relative_path), )    
+
+class Hy3D21MeshUVWrap:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+            },
+        }
+
+    RETURN_TYPES = ("TRIMESH", )
+    RETURN_NAMES = ("trimesh", )
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, trimesh):
+        from .hy3dpaint.utils.uvwrap_utils import mesh_uv_wrap
+        trimesh = mesh_uv_wrap(trimesh)
+        
+        return (trimesh,)        
+        
+class Hy3D21LoadMesh:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "glb_path": ("STRING", {"default": "", "tooltip": "The glb path with mesh to load."}), 
+            }
+        }
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    OUTPUT_TOOLTIPS = ("The glb model with mesh to texturize.",)
+    
+    FUNCTION = "load"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Loads a glb model from the given path."
+
+    def load(self, glb_path):
+
+        if not os.path.exists(glb_path):
+            glb_path = os.path.join(folder_paths.get_input_directory(), glb_path)
+        
+        trimesh = Trimesh.load(glb_path, force="mesh")
+        
+        return (trimesh,)        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -671,6 +794,10 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21VAEConfig": Hy3D21VAEConfig,
     "Hy3D21ResizeImages": Hy3D21ResizeImages,
     "Hy3D21LoadImageWithTransparency": Hy3D21LoadImageWithTransparency,
+    "Hy3D21PostprocessMesh": Hy3D21PostprocessMesh,
+    "Hy3D21ExportMesh": Hy3D21ExportMesh,
+    "Hy3D21MeshUVWrap": Hy3D21MeshUVWrap,
+    "Hy3D21LoadMesh": Hy3D21LoadMesh,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -683,5 +810,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21VAEDecode": "Hunyuan 3D 2.1 VAE Decoder",
     "Hy3D21VAEConfig": "Hunyuan 3D 2.1 VAE Config",
     "Hy3D21ResizeImages": "Hunyuan 3D 2.1 Resize Images",
-    "Hy3D21LoadImageWithTransparency": "Hunyuan 3D 2.1 Load Image with Transparency"
+    "Hy3D21LoadImageWithTransparency": "Hunyuan 3D 2.1 Load Image with Transparency",
+    "Hy3D21PostprocessMesh": "Hunyuan 3D 2.1 Post Process Trimesh",
+    "Hy3D21ExportMesh": "Hunyuan 3D 2.1 Export Mesh",
+    "Hy3D21MeshUVWrap": "Hunyuan 3D 2.1 Mesh UV Wrap",
+    "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh"
     }
