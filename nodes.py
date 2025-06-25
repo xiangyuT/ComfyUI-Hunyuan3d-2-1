@@ -329,6 +329,8 @@ class Hy3DInPaint:
         
         output_glb_path = f"{output_mesh_name}.glb"
         
+        pipeline.clean_memory()
+        
         del pipeline
         
         mm.soft_empty_cache()

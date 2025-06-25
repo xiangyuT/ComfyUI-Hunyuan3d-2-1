@@ -1,4 +1,4 @@
-# Hunyuan 3D is licensed under the TENCENT HUNYUAN NON-COMMERCIAL LICENSE AGREEMENT
+ # Hunyuan 3D is licensed under the TENCENT HUNYUAN NON-COMMERCIAL LICENSE AGREEMENT
 # except for the third-party components listed below.
 # Hunyuan 3D does not impose any additional limitations beyond what is outlined
 # in the repsective licenses of these third-party components.
@@ -17,6 +17,7 @@ import torch
 import copy
 import trimesh
 import numpy as np
+import gc
 from PIL import Image
 from typing import List
 from .DifferentiableRenderer.MeshRender import MeshRender
@@ -268,4 +269,14 @@ class Hunyuan3DPaintPipeline:
         mask_mr_np = (mask_mr.squeeze(-1).cpu().numpy() * 255).astype(np.uint8)
         
         return texture, mask, texture_mr, mask_mr
+        
+    def clean_memory(self):
+        del self.render
+        del self.view_processor
+        del self.models
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect()    
+        
         
