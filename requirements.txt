@@ -12,3 +12,6 @@ accelerate
 pytorch-lightning
 huggingface-hub
 safetensors
+scikit-image
+pybind11
+timm
