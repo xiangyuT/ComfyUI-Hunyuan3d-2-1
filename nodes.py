@@ -139,6 +139,7 @@ class Hy3DMeshGenerator:
                 "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
                 "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "attention_mode": (["sdpa", "sageattn"], {"default": "sdpa"}),
             },
         }
 
@@ -147,13 +148,13 @@ class Hy3DMeshGenerator:
     FUNCTION = "loadmodel"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def loadmodel(self, model, image, steps, guidance_scale, seed):
+    def loadmodel(self, model, image, steps, guidance_scale, seed, attention_mode):
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
         
         seed = seed % (2**32)
 
-        from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+        #from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
         #from .hy3dshape.hy3dshape.rembg import BackgroundRemover
         #import torchvision.transforms as T
 
@@ -162,7 +163,8 @@ class Hy3DMeshGenerator:
         pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
             config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
             ckpt_path=model_path,
-            offload_device=offload_device)
+            offload_device=offload_device,
+            attention_mode=attention_mode)
         
         # to_pil = T.ToPILImage()
         # image = to_pil(image[0].permute(2, 0, 1))
@@ -188,6 +190,87 @@ class Hy3DMeshGenerator:
         gc.collect()            
         
         return (latents,)
+        
+# class Hy3D21MultiViewsMeshGenerator:
+    # @classmethod
+    # def INPUT_TYPES(s):
+        # return {
+            # "required": {
+                # "model": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder"}),
+                # "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
+                # "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
+                # "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                # "attention_mode": (["sdpa", "sageattn"], {"default": "sdpa"}),
+            # },
+            # "optional":{
+                # "front": ("IMAGE", {"tooltip": "front image"}),
+                # "left": ("IMAGE", {"tooltip": "left image"}),
+                # "back": ("IMAGE", {"tooltip": "back image"}),
+                # "right": ("IMAGE", {"tooltip": "right image"}),            
+            # },
+        # }
+
+    # RETURN_TYPES = ("HY3DLATENT",)
+    # RETURN_NAMES = ("latents",)
+    # FUNCTION = "loadmodel"
+    # CATEGORY = "Hunyuan3D21Wrapper"
+
+    # def loadmodel(self, model, steps, guidance_scale, seed, attention_mode, front = None, left = None, back = None, right = None):
+        # device = mm.get_torch_device()
+        # offload_device=mm.unet_offload_device()
+        
+        # seed = seed % (2**32)
+
+        # #from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+        # #from .hy3dshape.hy3dshape.rembg import BackgroundRemover
+        # #import torchvision.transforms as T
+
+        # model_path = folder_paths.get_full_path("diffusion_models", model)
+        
+        # pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
+            # config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1_mv.yaml'),
+            # ckpt_path=model_path,
+            # offload_device=offload_device,
+            # attention_mode=attention_mode)
+        
+        # # to_pil = T.ToPILImage()
+        # # image = to_pil(image[0].permute(2, 0, 1))
+        
+        # # if image.mode == 'RGB':
+            # # rembg = BackgroundRemover()
+            # # image = rembg(image)            
+        
+        # if front is not None:
+            # front = tensor2pil(front)
+        # if left is not None:
+            # left = tensor2pil(left)
+        # if right is not None:
+            # right = tensor2pil(right)
+        # if back is not None:
+            # back = tensor2pil(back)
+        
+        # view_dict = {
+            # 'front': front,
+            # 'left': left,
+            # 'right': right,
+            # 'back': back
+        # }        
+        
+        # latents = pipeline(
+            # image=view_dict,
+            # num_inference_steps=steps,
+            # guidance_scale=guidance_scale,
+            # generator=torch.manual_seed(seed)
+            # )
+            
+        # del pipeline
+        # #del vae
+        
+        # mm.soft_empty_cache()
+        # torch.cuda.empty_cache()
+        # gc.collect()            
+        
+        # return (latents,)        
         
 class Hy3DMultiViewsGenerator:
     @classmethod
@@ -800,6 +883,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21ExportMesh": Hy3D21ExportMesh,
     "Hy3D21MeshUVWrap": Hy3D21MeshUVWrap,
     "Hy3D21LoadMesh": Hy3D21LoadMesh,
+    #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -816,5 +900,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21PostprocessMesh": "Hunyuan 3D 2.1 Post Process Trimesh",
     "Hy3D21ExportMesh": "Hunyuan 3D 2.1 Export Mesh",
     "Hy3D21MeshUVWrap": "Hunyuan 3D 2.1 Mesh UV Wrap",
-    "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh"
+    "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh",
+    #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
