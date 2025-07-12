@@ -147,6 +147,7 @@ class Hunyuan3DDiTPipeline:
         device='cuda',
         dtype=torch.float16,
         use_safetensors=None,
+        attention_mode="sdpa",
         **kwargs,
     ):
         # load config
@@ -174,6 +175,7 @@ class Hunyuan3DDiTPipeline:
         # else:
         #     ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=True)
 
+        config['model']['params']['attention_mode'] = attention_mode
         ckpt = load_torch_file(ckpt_path)
         # load model
         model = instantiate_from_config(config['model'])
@@ -185,6 +187,7 @@ class Hunyuan3DDiTPipeline:
             conditioner.load_state_dict(ckpt['conditioner'])
         image_processor = instantiate_from_config(config['image_processor'])
         scheduler = instantiate_from_config(config['scheduler'])
+        
 
         model_kwargs = dict(
             vae=vae,
