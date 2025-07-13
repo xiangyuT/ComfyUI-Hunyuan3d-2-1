@@ -880,7 +880,56 @@ class Hy3D21LoadMesh:
         
         trimesh = Trimesh.load(glb_path, force="mesh")
         
-        return (trimesh,)        
+        return (trimesh,)
+        
+class Hy3D21IMRemesh:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "merge_vertices": ("BOOLEAN", {"default": True}),
+                "vertex_count": ("INT", {"default": 10000, "min": 100, "max": 10000000, "step": 1}),
+                "smooth_iter": ("INT", {"default": 8, "min": 0, "max": 100, "step": 1}),
+                "align_to_boundaries": ("BOOLEAN", {"default": True}),
+                "triangulate_result": ("BOOLEAN", {"default": True}),
+                "max_facenum": ("INT", {"default": 40000, "min": 1, "max": 10000000, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "remesh"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Remeshes the mesh using instant-meshes: https://github.com/wjakob/instant-meshes, Note: this will remove all vertex colors and textures."
+
+    def remesh(self, trimesh, merge_vertices, vertex_count, smooth_iter, align_to_boundaries, triangulate_result, max_facenum):
+        try:
+            import pynanoinstantmeshes as PyNIM
+        except ImportError:
+            raise ImportError("pynanoinstantmeshes not found. Please install it using 'pip install pynanoinstantmeshes'")
+        new_mesh = trimesh.copy()
+        if merge_vertices:
+            trimesh.merge_vertices(new_mesh)
+
+        new_verts, new_faces = PyNIM.remesh(
+            np.array(trimesh.vertices, dtype=np.float32),
+            np.array(trimesh.faces, dtype=np.uint32),
+            vertex_count,
+            align_to_boundaries=align_to_boundaries,
+            smooth_iter=smooth_iter
+        )
+        if new_verts.shape[0] - 1 != new_faces.max():
+            # Skip test as the meshing failed
+            raise ValueError("Instant-meshes failed to remesh the mesh")
+        new_verts = new_verts.astype(np.float32)
+        if triangulate_result:
+            new_faces = Trimesh.geometry.triangulate_quads(new_faces)
+        
+        if len(new_mesh.faces) > max_facenum:
+            new_mesh = FaceReducer()(new_mesh, max_facenum=max_facenum)
+
+        return (new_mesh, )        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -897,6 +946,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21ExportMesh": Hy3D21ExportMesh,
     "Hy3D21MeshUVWrap": Hy3D21MeshUVWrap,
     "Hy3D21LoadMesh": Hy3D21LoadMesh,
+    "Hy3D21IMRemesh": Hy3D21IMRemesh,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -915,5 +965,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21ExportMesh": "Hunyuan 3D 2.1 Export Mesh",
     "Hy3D21MeshUVWrap": "Hunyuan 3D 2.1 Mesh UV Wrap",
     "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh",
+    "Hy3D21IMRemesh": "Hunyuan 3D 2.1 Instant-Meshes Remesh",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
