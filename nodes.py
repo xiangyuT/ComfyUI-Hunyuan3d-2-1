@@ -289,8 +289,8 @@ class Hy3DMultiViewsGenerator:
             },
         }
 
-    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE",)
-    RETURN_NAMES = ("pipeline", "albedo","mr",)
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","IMAGE","IMAGE",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","positions","normals",)
     FUNCTION = "genmultiviews"
     CATEGORY = "Hunyuan3D21Wrapper"
 
@@ -307,10 +307,12 @@ class Hy3DMultiViewsGenerator:
         
         temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
         
-        albedo, mr = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
+        albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
         albedo_tensor = []
         mr_tensor = []
+        normals_tensor = []
+        positions_tensor = []
         
         for pil_img in albedo:
             np_img = np.array(pil_img).astype(np.uint8)
@@ -323,11 +325,23 @@ class Hy3DMultiViewsGenerator:
             np_img = np_img / 255.0
             tensor_img = torch.from_numpy(np_img)
             mr_tensor.append(tensor_img)
+            
+        for pil_img in position_maps:
+            np_img = np.array(pil_img).astype(np.uint8)
+            np_img = np_img / 255.0
+            tensor_img = torch.from_numpy(np_img)
+            positions_tensor.append(tensor_img)             
+            
+        for pil_img in normal_maps:
+            np_img = np.array(pil_img).astype(np.uint8)
+            np_img = np_img / 255.0
+            tensor_img = torch.from_numpy(np_img)
+            normals_tensor.append(tensor_img)            
         
         # albedo = convert_pil_images_to_tensor(albedo)
         # mr = convert_pil_images_to_tensor(mr)       
         
-        return (paint_pipeline, albedo_tensor, mr_tensor,)       
+        return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor)       
         
 class Hy3DBakeMultiViews:
     @classmethod

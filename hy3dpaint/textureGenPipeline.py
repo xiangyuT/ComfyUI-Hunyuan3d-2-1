@@ -184,7 +184,7 @@ class Hunyuan3DPaintPipeline:
             seed=seed
         )
         
-        return multiviews_pbr["albedo"], multiviews_pbr["mr"]
+        return multiviews_pbr["albedo"], multiviews_pbr["mr"], normal_maps, position_maps
         
         ###########  Enhance  ##########
         # enhance_images = {}
