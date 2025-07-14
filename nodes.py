@@ -31,6 +31,8 @@ from .hy3dpaint.convert_utils import create_glb_with_pbr_materials
 from .hy3dpaint.textureGenPipeline import Hunyuan3DPaintPipeline, Hunyuan3DPaintConfig
 from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
+from .hy3dshape.hy3dshape.meshlib import postprocessmesh
+
 import folder_paths
 import node_helpers
 import hashlib
@@ -336,10 +338,7 @@ class Hy3DMultiViewsGenerator:
             np_img = np.array(pil_img).astype(np.uint8)
             np_img = np_img / 255.0
             tensor_img = torch.from_numpy(np_img)
-            normals_tensor.append(tensor_img)            
-        
-        # albedo = convert_pil_images_to_tensor(albedo)
-        # mr = convert_pil_images_to_tensor(mr)       
+            normals_tensor.append(tensor_img)
         
         return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor)       
         
@@ -931,6 +930,104 @@ class Hy3D21IMRemesh:
 
         return (new_mesh, )        
 
+class Hy3D21MeshlibDecimate:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "subdivideParts": ("INT",{"default":16, "min":1,"max":64,"step":1, "tooltip":"Should be the number of CPU/Core"}),
+            },
+            "optional":{
+                "target_face_num": ("INT",{"min":0,"max":10000000} ),
+                "target_face_ratio": ("FLOAT", {"min":0.000,"max":0.999}),
+                "strategy": (["None","MinimizeError","ShortestEdgeFirst"],{"default":"None"}),
+                "maxError": ("FLOAT",{"min":0.0,"max":1.0}),
+                "maxEdgeLen": ("FLOAT",),
+                "maxBdShift": ("FLOAT",),
+                "maxTriangleAspectRatio": ("FLOAT",),
+                "criticalTriAspectRatio": ("FLOAT",),
+                "tinyEdgeLength": ("FLOAT",),
+                "stabilizer": ("FLOAT",),
+                "angleWeightedDistToPlane": ("BOOLEAN",),
+                "optimizeVertexPos": ("BOOLEAN",),
+                "collapseNearNotFlippable": ("BOOLEAN",),
+                "touchNearBdEdges": ("BOOLEAN",),
+                "maxAngleChange": ("FLOAT",),
+                "decimateBetweenParts": ("BOOLEAN",),
+                "minFacesInPart": ("INT",)                
+            }
+        }
+
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "decimate"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Decimate the mesh using meshlib: https://meshlib.io/"
+
+    def decimate(self, trimesh, subdivideParts, target_face_num=0,target_face_ratio=0.0,strategy="None",maxError=0.0,maxEdgeLen=0.0,maxBdShift=0.0,maxTriangleAspectRatio=0.0,criticalTriAspectRatio=0.0,tinyEdgeLength=0.0,stabilizer=0.0,angleWeightedDistToPlane=False,optimizeVertexPos=False,collapseNearNotFlippable=False,touchNearBdEdges=False,maxAngleChange=0.0,decimateBetweenParts=False,minFacesInPart=0):
+        try:
+            import meshlib.mrmeshpy as mrmeshpy
+        except ImportError:
+            raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")
+
+        if target_face_num == 0 and target_face_ratio == 0.0:
+            raise ValueError('target_face_num or target_face_ratio must be set')
+
+        current_faces_num = trimesh.faces.shape[0]
+        print(f'Current Faces Number: {current_faces_num}')
+
+        settings = mrmeshpy.DecimateSettings()
+        if target_face_num > 0:
+            faces_to_delete = current_faces_num - target_face_num
+            settings.maxDeletedFaces = faces_to_delete
+        elif target_face_ratio > 0.0:
+            target_faces = int(current_faces_num * target_face_ratio)
+            faces_to_delete = current_faces_num - target_faces
+            settings.maxDeletedFaces = faces_to_delete
+        else:
+            raise ValueError('target_face_num or target_face_ratio must be set')
+        
+        if strategy == "MinimizeError":
+            settings.strategy = mrmeshpy.DecimateStrategy.MinimizeError
+        elif strategy == "ShortestEdgeFirst":
+            settings.strategy = mrmeshpy.DecimateStrategy.ShortestEdgeFirst
+            
+        if maxError > 0.0:
+            settings.maxError = maxError
+        if maxEdgeLen > 0.0:
+            settings.maxEdgeLen = maxEdgeLen
+        if maxBdShift > 0.0:
+            settings.maxBdShift = maxBdShift
+        if maxTriangleAspectRatio > 0.0:
+            settings.maxTriangleAspectRatio = maxTriangleAspectRatio
+        if criticalTriAspectRatio > 0.0:
+            settings.criticalTriAspectRatio = criticalTriAspectRatio
+        if tinyEdgeLength > 0.0:
+            settings.tinyEdgeLength = tinyEdgeLength
+        if stabilizer > 0.0:
+            settings.stabilizer = stabilizer
+        if angleWeightedDistToPlane == True:
+            settings.angleWeightedDistToPlane = angleWeightedDistToPlane
+        if optimizeVertexPos == True:
+            settings.optimizeVertexPos = optimizeVertexPos
+        if collapseNearNotFlippable == True:
+            settings.collapseNearNotFlippable = collapseNearNotFlippable
+        if touchNearBdEdges == True:
+            settings.touchNearBdEdges = touchNearBdEdges
+        if maxAngleChange > 0.0:
+            settings.maxAngleChange = maxAngleChange
+        if decimateBetweenParts == True:
+            settings.decimateBetweenParts = decimateBetweenParts
+        if minFacesInPart > 0:
+            settings.minFacesInPart = minFacesInPart
+            
+        settings.packMesh = True
+            
+        new_mesh = postprocessmesh(trimesh.vertices, trimesh.faces, settings)
+        
+        return (new_mesh, )     
+
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
     "Hy3DMultiViewsGenerator": Hy3DMultiViewsGenerator,
@@ -947,6 +1044,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21MeshUVWrap": Hy3D21MeshUVWrap,
     "Hy3D21LoadMesh": Hy3D21LoadMesh,
     "Hy3D21IMRemesh": Hy3D21IMRemesh,
+    "Hy3D21MeshlibDecimate": Hy3D21MeshlibDecimate,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -966,5 +1064,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21MeshUVWrap": "Hunyuan 3D 2.1 Mesh UV Wrap",
     "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh",
     "Hy3D21IMRemesh": "Hunyuan 3D 2.1 Instant-Meshes Remesh",
+    "Hy3D21MeshlibDecimate": "Hunyuan 3D 2.1 Meshlib Decimation",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
