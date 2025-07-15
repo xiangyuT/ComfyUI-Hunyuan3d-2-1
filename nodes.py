@@ -319,25 +319,25 @@ class Hy3DMultiViewsGenerator:
         for pil_img in albedo:
             np_img = np.array(pil_img).astype(np.uint8)
             np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img)
+            tensor_img = torch.from_numpy(np_img).float()
             albedo_tensor.append(tensor_img)
 
         for pil_img in mr:
             np_img = np.array(pil_img).astype(np.uint8)
             np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img)
+            tensor_img = torch.from_numpy(np_img).float()
             mr_tensor.append(tensor_img)
             
         for pil_img in position_maps:
             np_img = np.array(pil_img).astype(np.uint8)
             np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img)
+            tensor_img = torch.from_numpy(np_img).float()
             positions_tensor.append(tensor_img)             
             
         for pil_img in normal_maps:
             np_img = np.array(pil_img).astype(np.uint8)
             np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img)
+            tensor_img = torch.from_numpy(np_img).float()
             normals_tensor.append(tensor_img)
         
         albedo_tensor = torch.stack(albedo_tensor)
