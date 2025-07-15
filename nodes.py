@@ -340,6 +340,11 @@ class Hy3DMultiViewsGenerator:
             tensor_img = torch.from_numpy(np_img)
             normals_tensor.append(tensor_img)
         
+        albedo_tensor = torch.stack(albedo_tensor)
+        mr_tensor = torch.stack(mr_tensor)
+        positions_tensor = torch.stack(positions_tensor)
+        normals_tensor = torch.stack(normals_tensor)
+        
         return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor)       
         
 class Hy3DBakeMultiViews:
