@@ -1098,6 +1098,7 @@ class Hy3D21MeshGenerationBatch:
                 "generate_random_seed": ("BOOLEAN",{"default":True}),
                 "file_format": (["glb", "obj", "ply", "stl", "3mf", "dae"],),
                 "remove_background": ("BOOLEAN",{"default":False}),
+                "skip_generated_mesh": ("BOOLEAN", {"default":True}),
             },
             "optional": {
                 "enable_flash_vdm": ("BOOLEAN", {"default": True}),
@@ -1112,7 +1113,7 @@ class Hy3D21MeshGenerationBatch:
     DESCRIPTION = "Process all pictures from a folder"
     OUTPUT_NODE = True
 
-    def process(self, input_folder, output_folder, vae_model_name, dit_model_name, steps, guidance_scale, attention_mode, box_v, octree_resolution, num_chunks, mc_level, mc_algo, simplify, target_face_num, seed, generate_random_seed, file_format, remove_background, enable_flash_vdm, force_offload):       
+    def process(self, input_folder, output_folder, vae_model_name, dit_model_name, steps, guidance_scale, attention_mode, box_v, octree_resolution, num_chunks, mc_level, mc_algo, simplify, target_face_num, seed, generate_random_seed, file_format, remove_background, skip_generated_mesh, enable_flash_vdm, force_offload):       
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()
         
@@ -1162,74 +1163,84 @@ class Hy3D21MeshGenerationBatch:
             
             pbar = ProgressBar(nb_pictures)
             for file in files:           
-                print(f'Processing {file} ...')
-                if generate_random_seed:
-                    seed = int.from_bytes(os.urandom(4), 'big')
-                    
-                image = Image.open(file)
-                
-                if remove_background:
-                    print('Removing background ...')
-                    image = rembg(image)
-                
-                latents = pipeline(
-                    image=image,
-                    num_inference_steps=steps,
-                    guidance_scale=guidance_scale,
-                    generator=torch.manual_seed(seed)
-                    )
-                
-                latents = vae.decode(latents)
-                outputs = vae.latents2mesh(
-                    latents,
-                    output_type='trimesh',
-                    bounds=box_v,
-                    mc_level=mc_level,
-                    num_chunks=num_chunks,
-                    octree_resolution=octree_resolution,
-                    mc_algo=mc_algo,
-                    enable_pbar=True
-                )[0]
-                
-                if force_offload==True:
-                    vae.to(offload_device)
-                
-                outputs.mesh_f = outputs.mesh_f[:, ::-1]                
-                
-                mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
-                mesh_output = FloaterRemover()(mesh_output)
-                mesh_output = DegenerateFaceRemover()(mesh_output)
-                
-                if simplify==True and target_face_num>0:
-                    try:
-                        import meshlib.mrmeshpy as mrmeshpy
-                    except ImportError:
-                        raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")                    
-
-                    if target_face_num == 0 and target_face_ratio == 0.0:
-                        raise ValueError('target_face_num or target_face_ratio must be set')
-
-                    current_faces_num = len(mesh_output.faces)
-                    print(f'Current Faces Number: {current_faces_num}')
-
-                    settings = mrmeshpy.DecimateSettings()
-                    faces_to_delete = current_faces_num - target_face_num
-                    settings.maxDeletedFaces = faces_to_delete                        
-                    settings.packMesh = True
-                    
-                    print('Decimating ...')
-                    mesh_output = postprocessmesh(mesh_output.vertices, mesh_output.faces, settings)                
-                    
                 output_file_name = get_filename_without_extension_os_path(file)                
                 output_glb_path = Path(output_folder, f'{output_file_name}.{file_format}')
-                output_glb_path.parent.mkdir(exist_ok=True)
                 
-                mesh_output.export(output_glb_path, file_type=file_format)              
-                                
-                mm.soft_empty_cache()
-                torch.cuda.empty_cache()
-                gc.collect()     
+                processImage = True
+                
+                if skip_generated_mesh:
+                   if os.path.exists(output_glb_path):
+                       processImage = False
+                
+                if processImage == True:
+                    print(f'Processing {file} ...')
+                    if generate_random_seed:
+                        seed = int.from_bytes(os.urandom(4), 'big')
+                        
+                    image = Image.open(file)
+                    
+                    if remove_background:
+                        print('Removing background ...')
+                        image = rembg(image)
+                    
+                    latents = pipeline(
+                        image=image,
+                        num_inference_steps=steps,
+                        guidance_scale=guidance_scale,
+                        generator=torch.manual_seed(seed)
+                        )
+                    
+                    latents = vae.decode(latents)
+                    outputs = vae.latents2mesh(
+                        latents,
+                        output_type='trimesh',
+                        bounds=box_v,
+                        mc_level=mc_level,
+                        num_chunks=num_chunks,
+                        octree_resolution=octree_resolution,
+                        mc_algo=mc_algo,
+                        enable_pbar=True
+                    )[0]
+                    
+                    if force_offload==True:
+                        vae.to(offload_device)
+                    
+                    outputs.mesh_f = outputs.mesh_f[:, ::-1]                
+                    
+                    mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
+                    mesh_output = FloaterRemover()(mesh_output)
+                    mesh_output = DegenerateFaceRemover()(mesh_output)
+                    
+                    if simplify==True and target_face_num>0:
+                        try:
+                            import meshlib.mrmeshpy as mrmeshpy
+                        except ImportError:
+                            raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")                    
 
+                        if target_face_num == 0 and target_face_ratio == 0.0:
+                            raise ValueError('target_face_num or target_face_ratio must be set')
+
+                        current_faces_num = len(mesh_output.faces)
+                        print(f'Current Faces Number: {current_faces_num}')
+
+                        settings = mrmeshpy.DecimateSettings()
+                        faces_to_delete = current_faces_num - target_face_num
+                        settings.maxDeletedFaces = faces_to_delete                        
+                        settings.packMesh = True
+                        
+                        print('Decimating ...')
+                        mesh_output = postprocessmesh(mesh_output.vertices, mesh_output.faces, settings)                
+                        
+                    output_glb_path.parent.mkdir(exist_ok=True)
+                    
+                    mesh_output.export(output_glb_path, file_type=file_format)              
+                                    
+                    mm.soft_empty_cache()
+                    torch.cuda.empty_cache()
+                    gc.collect()     
+                else:
+                    print(f'Skipping file {file}')
+                    
                 pbar.update(1)
 
             del pipeline
@@ -1239,7 +1250,7 @@ class Hy3D21MeshGenerationBatch:
             torch.cuda.empty_cache()
             gc.collect() 
             
-        return (input_folder, output_folder,)
+        return (input_folder, output_folder,) 
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
