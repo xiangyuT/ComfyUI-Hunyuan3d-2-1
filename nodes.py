@@ -17,6 +17,7 @@ import trimesh as Trimesh
 import gc
 from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
 from .hy3dshape.hy3dshape.postprocessors import FaceReducer, FloaterRemover, DegenerateFaceRemover
+from .hy3dshape.hy3dshape.rembg import BackgroundRemover
 from typing import Union, Optional, Tuple, List, Any, Callable
 from pathlib import Path
 
@@ -43,6 +44,47 @@ from comfy.utils import load_torch_file, ProgressBar
 script_directory = os.path.dirname(os.path.abspath(__file__))
 comfy_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 diffusions_dir = os.path.join(comfy_path, "models", "diffusers")
+
+def get_picture_files(folder_path):
+    """
+    Retrieves all picture files (based on common extensions) from a given folder.
+
+    Args:
+        folder_path (str): The path to the folder to search.
+
+    Returns:
+        list: A list of full paths to the picture files found.
+    """
+    picture_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp')
+    picture_files = []
+
+    if not os.path.isdir(folder_path):
+        print(f"Error: Folder '{folder_path}' not found.")
+        return []
+
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.lower().endswith(picture_extensions):
+                picture_files.append(os.path.join(root, file))
+    return picture_files
+
+def get_filename_without_extension_os_path(full_file_path):
+    """
+    Extracts the filename without its extension from a full file path using os.path.
+
+    Args:
+        full_file_path (str): The complete path to the file.
+
+    Returns:
+        str: The filename without its extension.
+    """
+    # 1. Get the base name (filename with extension)
+    base_name = os.path.basename(full_file_path)
+    
+    # 2. Split the base name into root (filename without ext) and extension
+    file_name_without_ext, _ = os.path.splitext(base_name)
+    
+    return file_name_without_ext
 
 def _convert_texture_format(tex: Union[np.ndarray, torch.Tensor, Image.Image], 
                           texture_size: Tuple[int, int], device: str, force_set: bool = False) -> torch.Tensor:
@@ -1031,7 +1073,171 @@ class Hy3D21MeshlibDecimate:
             
         new_mesh = postprocessmesh(trimesh.vertices, trimesh.faces, settings)
         
-        return (new_mesh, )     
+        return (new_mesh, )    
+
+class Hy3D21MeshGenerationBatch:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input_folder": ("STRING",),
+                "output_folder": ("STRING",),
+                "vae_model_name": (folder_paths.get_filename_list("vae"), {"tooltip": "These models are loaded from 'ComfyUI/models/vae'"}),
+                "dit_model_name": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder"}),
+                "steps": ("INT", {"default": 50, "min": 1, "max": 100, "step": 1, "tooltip": "Number of diffusion steps"}),
+                "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1, "max": 30, "step": 0.1, "tooltip": "Guidance scale"}),
+                "attention_mode": (["sdpa", "sageattn"], {"default": "sdpa"}),
+                "box_v": ("FLOAT", {"default": 1.01, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "octree_resolution": ("INT", {"default": 384, "min": 8, "max": 4096, "step": 8}),
+                "num_chunks": ("INT", {"default": 8000, "min": 1, "max": 10000000, "step": 1, "tooltip": "Number of chunks to process at once, higher values use more memory, but make the process faster"}),
+                "mc_level": ("FLOAT", {"default": 0, "min": -1.0, "max": 1.0, "step": 0.0001}),
+                "mc_algo": (["mc", "dmc"], {"default": "mc"}),
+                "simplify": ("BOOLEAN",{"default": True}),
+                "target_face_num": ("INT",{"default": 200000,"min":0,"max":10000000} ),
+                "seed": ("INT",),
+                "generate_random_seed": ("BOOLEAN",{"default":True}),
+                "file_format": (["glb", "obj", "ply", "stl", "3mf", "dae"],),
+                "remove_background": ("BOOLEAN",{"default":False}),
+            },
+            "optional": {
+                "enable_flash_vdm": ("BOOLEAN", {"default": True}),
+                "force_offload": ("BOOLEAN", {"default": False, "tooltip": "Offloads the model to the offload device once the process is done."}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("output_folder",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Process all pictures from a folder"
+    OUTPUT_NODE = True
+
+    def process(self, input_folder, output_folder, vae_model_name, dit_model_name, steps, guidance_scale, attention_mode, box_v, octree_resolution, num_chunks, mc_level, mc_algo, simplify, target_face_num, seed, generate_random_seed, file_format, remove_background, enable_flash_vdm, force_offload):       
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        
+        files = get_picture_files(input_folder)
+        nb_pictures = len(files)
+        
+        if nb_pictures>0:            
+            rembg = BackgroundRemover()
+            
+            dit_model_path = folder_paths.get_full_path("diffusion_models", dit_model_name)
+            
+            pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_single_file(
+                config_path=os.path.join(script_directory, 'configs', 'dit_config_2_1.yaml'),
+                ckpt_path=dit_model_path,
+                offload_device=offload_device,
+                attention_mode=attention_mode)    
+
+            vae_model_path = folder_paths.get_full_path("vae", vae_model_name)
+            vae_sd = load_torch_file(vae_model_path)
+
+            vae_config = {
+                'num_latents': 4096,
+                'embed_dim': 64,
+                'num_freqs': 8,
+                'include_pi': False,
+                'heads': 16,
+                'width': 1024,
+                'num_encoder_layers': 8,
+                'num_decoder_layers': 16,
+                'qkv_bias': False,
+                'qk_norm': True,
+                'scale_factor': 1.0039506158752403,
+                'geo_decoder_mlp_expand_ratio': 4,
+                'geo_decoder_downsample_ratio': 1,
+                'geo_decoder_ln_post': True,
+                'point_feats': 4,
+                'pc_size': 81920,
+                'pc_sharpedge_size': 0
+            }
+
+            vae = ShapeVAE(**vae_config)
+            vae.load_state_dict(vae_sd)
+            vae.eval().to(torch.float16)
+            vae.to(device)
+            
+            vae.enable_flashvdm_decoder(enabled=enable_flash_vdm, mc_algo=mc_algo)
+            
+            pbar = ProgressBar(nb_pictures)
+            for file in files:           
+                print(f'Processing {file} ...')
+                if generate_random_seed:
+                    seed = int.from_bytes(os.urandom(4), 'big')
+                    
+                image = Image.open(file)
+                
+                if remove_background:
+                    print('Removing background ...')
+                    image = rembg(image)
+                
+                latents = pipeline(
+                    image=image,
+                    num_inference_steps=steps,
+                    guidance_scale=guidance_scale,
+                    generator=torch.manual_seed(seed)
+                    )
+                
+                latents = vae.decode(latents)
+                outputs = vae.latents2mesh(
+                    latents,
+                    output_type='trimesh',
+                    bounds=box_v,
+                    mc_level=mc_level,
+                    num_chunks=num_chunks,
+                    octree_resolution=octree_resolution,
+                    mc_algo=mc_algo,
+                    enable_pbar=True
+                )[0]
+                
+                if force_offload==True:
+                    vae.to(offload_device)
+                
+                outputs.mesh_f = outputs.mesh_f[:, ::-1]                
+                
+                if simplify==True and target_face_num>0:                
+                    try:
+                        import meshlib.mrmeshpy as mrmeshpy
+                    except ImportError:
+                        raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")                    
+
+                    if target_face_num == 0 and target_face_ratio == 0.0:
+                        raise ValueError('target_face_num or target_face_ratio must be set')
+
+                    current_faces_num = len(outputs.mesh_f)
+                    print(f'Current Faces Number: {current_faces_num}')
+
+                    settings = mrmeshpy.DecimateSettings()
+                    faces_to_delete = current_faces_num - target_face_num
+                    settings.maxDeletedFaces = faces_to_delete                        
+                    settings.packMesh = True
+                    
+                    print('Decimating ...')
+                    mesh_output = postprocessmesh(outputs.mesh_v, outputs.mesh_f, settings)                
+                else:
+                    mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
+                    
+                output_file_name = get_filename_without_extension_os_path(file)                
+                output_glb_path = Path(output_folder, f'{output_file_name}.{file_format}')
+                output_glb_path.parent.mkdir(exist_ok=True)
+                
+                mesh_output.export(output_glb_path, file_type=file_format)              
+                                
+                mm.soft_empty_cache()
+                torch.cuda.empty_cache()
+                gc.collect()     
+
+                pbar.update(1)
+
+            del pipeline
+            del vae
+            
+            mm.soft_empty_cache()
+            torch.cuda.empty_cache()
+            gc.collect() 
+            
+        return (output_folder,)
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1050,6 +1256,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21LoadMesh": Hy3D21LoadMesh,
     "Hy3D21IMRemesh": Hy3D21IMRemesh,
     "Hy3D21MeshlibDecimate": Hy3D21MeshlibDecimate,
+    "Hy3D21MeshGenerationBatch": Hy3D21MeshGenerationBatch,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1070,5 +1277,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21LoadMesh": "Hunyuan 3D 2.1 Load Mesh",
     "Hy3D21IMRemesh": "Hunyuan 3D 2.1 Instant-Meshes Remesh",
     "Hy3D21MeshlibDecimate": "Hunyuan 3D 2.1 Meshlib Decimation",
+    "Hy3D21MeshGenerationBatch": "Hunyuan 3D 2.1 Mesh Generator from Folder",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
