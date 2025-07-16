@@ -34,16 +34,29 @@ from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
 from .hy3dshape.hy3dshape.meshlib import postprocessmesh
 
+from spandrel import ModelLoader, ImageModelDescriptor
+
 import folder_paths
 import node_helpers
 import hashlib
 
 import comfy.model_management as mm
 from comfy.utils import load_torch_file, ProgressBar
+import comfy.utils
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 comfy_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 diffusions_dir = os.path.join(comfy_path, "models", "diffusers")
+
+def hy3dpaintimages_to_tensor(images):
+    tensors = []
+    for pil_img in images:
+        np_img = np.array(pil_img).astype(np.uint8)
+        np_img = np_img / 255.0
+        tensor_img = torch.from_numpy(np_img).float()
+        tensors.append(tensor_img)
+    tensors = torch.stack(tensors)
+    return tensors
 
 def get_picture_files(folder_path):
     """
@@ -61,12 +74,44 @@ def get_picture_files(folder_path):
     if not os.path.isdir(folder_path):
         print(f"Error: Folder '{folder_path}' not found.")
         return []
+                
+    for entry_name in os.listdir(folder_path):
+        full_path = os.path.join(folder_path, entry_name)
 
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if file.lower().endswith(picture_extensions):
-                picture_files.append(os.path.join(root, file))
+        # Check if the entry is actually a file (and not a sub-directory)
+        if os.path.isfile(full_path):
+            file_name, file_extension = os.path.splitext(entry_name)
+            if file_extension.lower().endswith(picture_extensions):
+                picture_files.append(full_path)                
     return picture_files
+    
+def get_mesh_files(folder_path, name_filter = None):
+    """
+    Retrieves all picture files (based on common extensions) from a given folder.
+
+    Args:
+        folder_path (str): The path to the folder to search.
+
+    Returns:
+        list: A list of full paths to the picture files found.
+    """
+    mesh_extensions = ('.obj', '.glb')
+    mesh_files = []
+
+    if not os.path.isdir(folder_path):
+        print(f"Error: Folder '{folder_path}' not found.")
+        return []
+                    
+    for entry_name in os.listdir(folder_path):
+        full_path = os.path.join(folder_path, entry_name)
+
+        # Check if the entry is actually a file (and not a sub-directory)
+        if os.path.isfile(full_path):
+            file_name, file_extension = os.path.splitext(entry_name)
+            if file_extension.lower().endswith(mesh_extensions):
+                if name_filter is None or name_filter.lower() in file_name.lower():
+                    mesh_files.append(full_path)                 
+    return mesh_files    
 
 def get_filename_without_extension_os_path(full_file_path):
     """
@@ -353,39 +398,10 @@ class Hy3DMultiViewsGenerator:
         
         albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
-        albedo_tensor = []
-        mr_tensor = []
-        normals_tensor = []
-        positions_tensor = []
-        
-        for pil_img in albedo:
-            np_img = np.array(pil_img).astype(np.uint8)
-            np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img).float()
-            albedo_tensor.append(tensor_img)
-
-        for pil_img in mr:
-            np_img = np.array(pil_img).astype(np.uint8)
-            np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img).float()
-            mr_tensor.append(tensor_img)
-            
-        for pil_img in position_maps:
-            np_img = np.array(pil_img).astype(np.uint8)
-            np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img).float()
-            positions_tensor.append(tensor_img)             
-            
-        for pil_img in normal_maps:
-            np_img = np.array(pil_img).astype(np.uint8)
-            np_img = np_img / 255.0
-            tensor_img = torch.from_numpy(np_img).float()
-            normals_tensor.append(tensor_img)
-        
-        albedo_tensor = torch.stack(albedo_tensor)
-        mr_tensor = torch.stack(mr_tensor)
-        positions_tensor = torch.stack(positions_tensor)
-        normals_tensor = torch.stack(normals_tensor)
+        albedo_tensor = hy3dpaintimages_to_tensor(albedo)
+        mr_tensor = hy3dpaintimages_to_tensor(mr)
+        normals_tensor = hy3dpaintimages_to_tensor(normal_maps)
+        positions_tensor = hy3dpaintimages_to_tensor(position_maps)       
         
         return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor)       
         
@@ -1096,7 +1112,7 @@ class Hy3D21MeshGenerationBatch:
                 "target_face_num": ("INT",{"default": 200000,"min":0,"max":10000000} ),
                 "seed": ("INT",),
                 "generate_random_seed": ("BOOLEAN",{"default":True}),
-                "file_format": (["glb", "obj", "ply", "stl", "3mf", "dae"],),
+                "file_format": (["glb", "obj"],),
                 "remove_background": ("BOOLEAN",{"default":False}),
                 "skip_generated_mesh": ("BOOLEAN", {"default":True}),
             },
@@ -1106,8 +1122,8 @@ class Hy3D21MeshGenerationBatch:
             }
         }
 
-    RETURN_TYPES = ("STRING","STRING",)
-    RETURN_NAMES = ("input_folder", "output_folder",)
+    RETURN_TYPES = ("STRING","STRING","STRING","STRING",)
+    RETURN_NAMES = ("input_folder", "output_folder", "processed_input_images", "processed_output_meshes",)
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
     DESCRIPTION = "Process all pictures from a folder"
@@ -1119,6 +1135,9 @@ class Hy3D21MeshGenerationBatch:
         
         files = get_picture_files(input_folder)
         nb_pictures = len(files)
+        
+        processed_input_images = []
+        processed_output_meshes = []
         
         if nb_pictures>0:            
             rembg = BackgroundRemover()
@@ -1233,6 +1252,9 @@ class Hy3D21MeshGenerationBatch:
                         
                     output_glb_path.parent.mkdir(exist_ok=True)
                     
+                    processed_input_images.append(file)
+                    processed_output_meshes.append(output_glb_path)
+                    
                     mesh_output.export(output_glb_path, file_type=file_format)              
                                     
                     mm.soft_empty_cache()
@@ -1250,7 +1272,195 @@ class Hy3D21MeshGenerationBatch:
             torch.cuda.empty_cache()
             gc.collect() 
             
-        return (input_folder, output_folder,) 
+        return (input_folder, output_folder, processed_input_images, processed_output_meshes, ) 
+        
+class Hy3D21GenerateMultiViewsBatch:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "output_folder": ("STRING",),
+                "camera_config": ("HY3D21CAMERA",),
+                "view_size": ("INT", {"default": 512, "min": 512, "max":1024, "step":256}),
+                "steps": ("INT", {"default": 10, "min": 1, "max": 100, "step": 1, "tooltip": "Number of steps"}),
+                "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
+                "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512}),
+                "unwrap_mesh": ("BOOLEAN", {"default":True}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0x7fffffff}),
+                "generate_random_seed": ("BOOLEAN",{"default":True}),
+                "remove_background": ("BOOLEAN",{"default":False}),
+                "skip_generated_mesh": ("BOOLEAN",{"default":True}),
+                "upscale_multiviews": (["None","CustomModel"],{"default":"None"}),
+                "upscale_model_name": (folder_paths.get_filename_list("upscale_models"), ),
+            },
+            "optional": {
+                "input_images_folder": ("STRING",),
+                "input_meshes_folder": ("STRING",),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("processed_meshes",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Process all meshes from a folder"
+    OUTPUT_NODE = True
+
+    def process(self, output_folder, camera_config, view_size, steps, guidance_scale, texture_size, unwrap_mesh, seed, generate_random_seed, remove_background, skip_generated_mesh, upscale_multiviews, upscale_model_name, input_images_folder = None, input_meshes_folder = None):       
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()     
+        rembg = BackgroundRemover()
+        processed_meshes = []
+        
+        if input_images_folder != None and input_meshes_folder != None:
+            files = get_picture_files(input_images_folder)
+            nb_pictures = len(files)
+            
+            if nb_pictures>0:                     
+                conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)                                
+                
+                temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
+                
+                pbar = ProgressBar(nb_pictures)
+                for file in files:                    
+                    image_name = get_filename_without_extension_os_path(file)                    
+                    input_meshes = get_mesh_files(input_meshes_folder, image_name)
+                    if len(input_meshes)>0:
+                        if len(input_meshes)>1:
+                            print(f'Warning: Multiple meshes found for input_image {image_name} -> Taking the first one')
+                        
+                        output_file_name = get_filename_without_extension_os_path(file)
+                        output_mesh_folder = os.path.join(output_folder, output_file_name)
+                        output_glb_path = Path(output_mesh_folder, f'{output_file_name}.glb')
+                        
+                        processMesh = True
+                        
+                        if skip_generated_mesh and os.path.exists(output_glb_path):
+                            processMesh = False
+                        
+                        if processMesh:                
+                            os.makedirs(output_mesh_folder, exist_ok=True)
+                            
+                            print(f'Processing {file} with {input_meshes[0]} ...')
+                            image = Image.open(file)
+                            if remove_background:
+                                print('Removing background ...')
+                                image = rembg(image)
+                                
+                            if generate_random_seed:
+                                seed = int.from_bytes(os.urandom(4), 'big')
+                                
+                            trimesh = Trimesh.load(input_meshes[0])      
+                            
+                            paint_pipeline = Hunyuan3DPaintPipeline(conf)
+                            albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
+                            
+                            for index, img in enumerate(albedo):                                
+                                image_output_path = os.path.join(output_mesh_folder, f'MV_{index}.png')
+                                img.save(image_output_path)                               
+
+                            if upscale_multiviews == "CustomModel":
+                                model_path = folder_paths.get_full_path_or_raise("upscale_models", upscale_model_name)
+                                sd = comfy.utils.load_torch_file(model_path, safe_load=True)
+                                if "module.layers.0.residual_group.blocks.0.norm1.weight" in sd:
+                                    sd = comfy.utils.state_dict_prefix_replace(sd, {"module.":""})
+                                upscale_model = ModelLoader().load_from_state_dict(sd).eval()
+
+                                if not isinstance(upscale_model, ImageModelDescriptor):
+                                    print("Cannot Upscale: Upscale model must be a single-image model.")
+                                    del upscale_model
+                                    upscale_model = None
+                                else:
+                                    upscale_model.to(device)
+                                
+                                if upscale_model != None:
+                                    albedo_tensors = hy3dpaintimages_to_tensor(albedo)
+                                    in_img = albedo_tensors.movedim(-1,-3).to(device)
+
+                                    tile = 512
+                                    overlap = 32
+
+                                    oom = True
+                                    while oom:
+                                        try:
+                                            steps = in_img.shape[0] * comfy.utils.get_tiled_scale_steps(in_img.shape[3], in_img.shape[2], tile_x=tile, tile_y=tile, overlap=overlap)
+                                            pbar = comfy.utils.ProgressBar(steps)
+                                            s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
+                                            oom = False
+                                        except model_management.OOM_EXCEPTION as e:
+                                            tile //= 2
+                                            if tile < 128:
+                                                raise e
+
+                                    #upscale_model.to("cpu")
+                                    s = torch.clamp(s.movedim(-3,-1), min=0, max=1.0)
+                                    
+                                    albedo = convert_tensor_images_to_pil(s)
+                                    
+                                    for index, img in enumerate(albedo):
+                                        image_output_path = os.path.join(output_mesh_folder, f'MV_Upscaled_{index}.png')
+                                        img.save(image_output_path)   
+                                    
+                                    mr_tensors = hy3dpaintimages_to_tensor(mr)
+                                    in_img = mr_tensors.movedim(-1,-3).to(device)
+
+                                    tile = 512
+                                    overlap = 32
+
+                                    oom = True
+                                    while oom:
+                                        try:
+                                            steps = in_img.shape[0] * comfy.utils.get_tiled_scale_steps(in_img.shape[3], in_img.shape[2], tile_x=tile, tile_y=tile, overlap=overlap)
+                                            pbar = comfy.utils.ProgressBar(steps)
+                                            s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
+                                            oom = False
+                                        except model_management.OOM_EXCEPTION as e:
+                                            tile //= 2
+                                            if tile < 128:
+                                                raise e
+
+                                    #upscale_model.to("cpu")
+                                    s = torch.clamp(s.movedim(-3,-1), min=0, max=1.0)
+                                    
+                                    mr = convert_tensor_images_to_pil(s)                                    
+                                    
+                                    del upscale_model
+                            
+                            texture, mask, texture_mr, mask_mr = paint_pipeline.bake_from_multiview(albedo,mr,camera_config["selected_camera_elevs"], camera_config["selected_camera_azims"], camera_config["selected_view_weights"])
+                            
+                            albedo, mr = paint_pipeline.inpaint(texture, mask, texture_mr, mask_mr)        
+                            paint_pipeline.set_texture_albedo(albedo)
+                            paint_pipeline.set_texture_mr(mr)
+                            
+                            output_mesh_path = os.path.join(comfy_path, "temp", f"{output_file_name}.obj")
+                            output_temp_path = paint_pipeline.save_mesh(output_mesh_path)                   
+                            shutil.copyfile(output_temp_path, output_glb_path)
+                            
+                            processed_meshes.append(output_glb_path)
+                            
+                            paint_pipeline.clean_memory()
+                            del paint_pipeline
+                            
+                            mm.soft_empty_cache()
+                            torch.cuda.empty_cache()
+                            gc.collect() 
+                        else:
+                            print(f'Skipping {file}') 
+                    else:
+                        print(f'Error: No mesh found for input image {image_name}')
+                        
+                    pbar.update(1)
+                
+            else:
+                print('No image found in input_images_folder')
+        else:
+            print('Nothing to process')       
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect() 
+            
+        return (processed_meshes, )         
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1270,6 +1480,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21IMRemesh": Hy3D21IMRemesh,
     "Hy3D21MeshlibDecimate": Hy3D21MeshlibDecimate,
     "Hy3D21MeshGenerationBatch": Hy3D21MeshGenerationBatch,
+    "Hy3D21GenerateMultiViewsBatch": Hy3D21GenerateMultiViewsBatch,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1291,5 +1502,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21IMRemesh": "Hunyuan 3D 2.1 Instant-Meshes Remesh",
     "Hy3D21MeshlibDecimate": "Hunyuan 3D 2.1 Meshlib Decimation",
     "Hy3D21MeshGenerationBatch": "Hunyuan 3D 2.1 Mesh Generator from Folder",
+    "Hy3D21GenerateMultiViewsBatch": "Hunyuan 3D 2.1 MultiViews Generator Batch"
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
