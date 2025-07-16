@@ -1105,8 +1105,8 @@ class Hy3D21MeshGenerationBatch:
             }
         }
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("output_folder",)
+    RETURN_TYPES = ("STRING","STRING",)
+    RETURN_NAMES = ("input_folder", "output_folder",)
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
     DESCRIPTION = "Process all pictures from a folder"
@@ -1196,7 +1196,11 @@ class Hy3D21MeshGenerationBatch:
                 
                 outputs.mesh_f = outputs.mesh_f[:, ::-1]                
                 
-                if simplify==True and target_face_num>0:                
+                mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
+                mesh_output = FloaterRemover()(mesh_output)
+                mesh_output = DegenerateFaceRemover()(mesh_output)
+                
+                if simplify==True and target_face_num>0:
                     try:
                         import meshlib.mrmeshpy as mrmeshpy
                     except ImportError:
@@ -1205,7 +1209,7 @@ class Hy3D21MeshGenerationBatch:
                     if target_face_num == 0 and target_face_ratio == 0.0:
                         raise ValueError('target_face_num or target_face_ratio must be set')
 
-                    current_faces_num = len(outputs.mesh_f)
+                    current_faces_num = len(mesh_output.faces)
                     print(f'Current Faces Number: {current_faces_num}')
 
                     settings = mrmeshpy.DecimateSettings()
@@ -1214,9 +1218,7 @@ class Hy3D21MeshGenerationBatch:
                     settings.packMesh = True
                     
                     print('Decimating ...')
-                    mesh_output = postprocessmesh(outputs.mesh_v, outputs.mesh_f, settings)                
-                else:
-                    mesh_output = Trimesh.Trimesh(outputs.mesh_v, outputs.mesh_f)
+                    mesh_output = postprocessmesh(mesh_output.vertices, mesh_output.faces, settings)                
                     
                 output_file_name = get_filename_without_extension_os_path(file)                
                 output_glb_path = Path(output_folder, f'{output_file_name}.{file_format}')
@@ -1237,7 +1239,7 @@ class Hy3D21MeshGenerationBatch:
             torch.cuda.empty_cache()
             gc.collect() 
             
-        return (output_folder,)
+        return (input_folder, output_folder,)
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
