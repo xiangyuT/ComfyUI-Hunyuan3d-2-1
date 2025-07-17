@@ -1358,8 +1358,13 @@ class Hy3D21GenerateMultiViewsBatch:
                             
                             if export_multiviews:
                                 for index, img in enumerate(albedo):                                
-                                    image_output_path = os.path.join(output_mesh_folder, f'MV_{index}.png')
-                                    img.save(image_output_path)                               
+                                    image_output_path = os.path.join(output_mesh_folder, f'Albedo_{index}.png')
+                                    img.save(image_output_path)
+                                    
+                                for index, img in enumerate(mr):
+                                    image_output_path = os.path.join(output_mesh_folder, f'MR_{index}.png')
+                                    img.save(image_output_path)                                    
+                                                                       
 
                             if upscale_multiviews == "CustomModel":
                                 model_path = folder_paths.get_full_path_or_raise("upscale_models", upscale_model_name)
@@ -1401,7 +1406,7 @@ class Hy3D21GenerateMultiViewsBatch:
                                     
                                     if export_multiviews:
                                         for index, img in enumerate(albedo):
-                                            image_output_path = os.path.join(output_mesh_folder, f'MV_Upscaled_{index}.png')
+                                            image_output_path = os.path.join(output_mesh_folder, f'Albedo_Upscaled_{index}.png')
                                             img.save(image_output_path)   
                                     
                                     mr_tensors = hy3dpaintimages_to_tensor(mr)
@@ -1425,7 +1430,12 @@ class Hy3D21GenerateMultiViewsBatch:
                                     #upscale_model.to("cpu")
                                     s = torch.clamp(s.movedim(-3,-1), min=0, max=1.0)
                                     
-                                    mr = convert_tensor_images_to_pil(s)                                    
+                                    mr = convert_tensor_images_to_pil(s) 
+
+                                    if export_multiviews:
+                                        for index, img in enumerate(mr):
+                                            image_output_path = os.path.join(output_mesh_folder, f'MR_Upscaled_{index}.png')
+                                            img.save(image_output_path)
                                     
                                     del upscale_model
                             
