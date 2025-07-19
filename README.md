@@ -13,7 +13,9 @@ Hunyuan3d-vae-v2-1 checkpoint to be installed in vae folder
 
 # Installation
 
-For the texturegen part compilation is needed
+pip install -r requirements.txt
+
+For the texturegen part compilation is needed:
 
 Minimum version for Torch is v2.6.0
 
