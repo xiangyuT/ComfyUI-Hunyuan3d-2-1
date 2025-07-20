@@ -92,7 +92,7 @@ class Hunyuan3DPaintPipeline:
 
     def __init__(self, config=None) -> None:
         self.config = config if config is not None else Hunyuan3DPaintConfig()
-        self.models = {}
+        self.model = None
         self.stats_logs = {}
         self.render = MeshRender(
             default_resolution=self.config.render_size,
@@ -102,7 +102,7 @@ class Hunyuan3DPaintPipeline:
             ortho_scale=self.config.ortho_scale
         )
         self.view_processor = ViewProcessor(self.config, self.render)
-        self.load_models()
+        #self.load_models()
 
     def load_models(self):
         torch.cuda.empty_cache()
@@ -113,6 +113,9 @@ class Hunyuan3DPaintPipeline:
     @torch.no_grad()
     def __call__(self, mesh, image_path=None, output_mesh_path=None, use_remesh=False, save_glb=True, num_steps=10, guidance_scale=3.0, unwrap=True, seed=0):
         """Generate texture for 3D mesh using multiview diffusion"""
+        if self.model == None:
+            self.model = multiviewDiffusionNet(self.config)
+        
         # Ensure image_prompt is a list
         if isinstance(image_path, str):
             image_prompt = Image.open(image_path)
@@ -177,7 +180,7 @@ class Hunyuan3DPaintPipeline:
 
         ###########  Multiview  ##########
         print('Generating MultiViews PBR ...')
-        multiviews_pbr = self.models["multiview_model"](
+        multiviews_pbr = self.model(
             image_prompt,
             normal_maps + position_maps,
             prompt=image_caption,
@@ -277,10 +280,13 @@ class Hunyuan3DPaintPipeline:
     def clean_memory(self):
         del self.render
         del self.view_processor
-        del self.models
+        del self.model
         
         mm.soft_empty_cache()
         torch.cuda.empty_cache()
         gc.collect()    
+        
+    def load_mesh(self, mesh):
+        self.render.load_mesh(mesh=mesh)
         
         

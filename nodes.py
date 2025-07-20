@@ -1473,7 +1473,36 @@ class Hy3D21GenerateMultiViewsBatch:
         torch.cuda.empty_cache()
         gc.collect() 
             
-        return (processed_meshes, )         
+        return (processed_meshes, )    
+
+class Hy3D21UseMultiViews:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "camera_config": ("HY3D21CAMERA",),
+                "albedo": ("IMAGE",),
+                "mr": ("IMAGE",),
+                "view_size": ("INT",{"default":512}),
+                "texture_size": ("INT",{"default":1024}),
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE",)
+    RETURN_NAMES = ("pipeline", "albedo","mr",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, trimesh, camera_config, albedo, mr, view_size, texture_size):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        
+        conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)
+        paint_pipeline = Hunyuan3DPaintPipeline(conf)
+        paint_pipeline.load_mesh(trimesh)
+        
+        return (paint_pipeline, albedo, mr)         
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1494,6 +1523,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21MeshlibDecimate": Hy3D21MeshlibDecimate,
     "Hy3D21MeshGenerationBatch": Hy3D21MeshGenerationBatch,
     "Hy3D21GenerateMultiViewsBatch": Hy3D21GenerateMultiViewsBatch,
+    "Hy3D21UseMultiViews": Hy3D21UseMultiViews,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1515,6 +1545,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21IMRemesh": "Hunyuan 3D 2.1 Instant-Meshes Remesh",
     "Hy3D21MeshlibDecimate": "Hunyuan 3D 2.1 Meshlib Decimation",
     "Hy3D21MeshGenerationBatch": "Hunyuan 3D 2.1 Mesh Generator from Folder",
-    "Hy3D21GenerateMultiViewsBatch": "Hunyuan 3D 2.1 MultiViews Generator Batch"
+    "Hy3D21GenerateMultiViewsBatch": "Hunyuan 3D 2.1 MultiViews Generator Batch",
+    "Hy3D21UseMultiViews": "Hunyuan 3D 2.1 Use MultiViews"
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
