@@ -23,6 +23,10 @@ Go in the folder hy3dpaint/custom_rasterizer and execute this command: `python s
 
 Go in the folder hy3dpaint/DifferentiableRenderer and execute this command: `python setup.py install`
 
+Some precompiled wheels are saved in dist folders
+
+I let you check it in hy3dpaint/custom_rasterizer/dist and hy3dpaint/DifferentiableRenderer/dist
+
 ---
 
 # Xatlas upgrade procedure to fix UV wrapping high poly meshes
