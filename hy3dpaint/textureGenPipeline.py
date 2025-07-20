@@ -64,7 +64,7 @@ class Hunyuan3DPaintConfig:
         self.bake_mode = "back_sample"
         self.render_size = 1024
         self.texture_size = texture_size
-        self.max_selected_view_num = 16
+        self.max_selected_view_num = 32
         self.resolution = resolution
         self.bake_exp = 4
         self.merge_method = "fast"
@@ -145,12 +145,16 @@ class Hunyuan3DPaintPipeline:
         self.render.load_mesh(mesh=mesh)
 
         ########### View Selection #########
-        selected_camera_elevs, selected_camera_azims, selected_view_weights = self.view_processor.bake_view_selection(
-            self.config.candidate_camera_elevs,
-            self.config.candidate_camera_azims,
-            self.config.candidate_view_weights,
-            self.config.max_selected_view_num,
-        )
+        # selected_camera_elevs, selected_camera_azims, selected_view_weights = self.view_processor.bake_view_selection(
+            # self.config.candidate_camera_elevs,
+            # self.config.candidate_camera_azims,
+            # self.config.candidate_view_weights,
+            # self.config.max_selected_view_num,
+        # )
+        
+        selected_camera_elevs = self.config.candidate_camera_elevs
+        selected_camera_azims = self.config.candidate_camera_azims
+        selected_view_weights = self.config.candidate_view_weights
 
         normal_maps = self.view_processor.render_normal_multiview(
             selected_camera_elevs, selected_camera_azims, use_abs_coor=True
