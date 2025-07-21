@@ -1517,7 +1517,7 @@ class Hy3D21UseMultiViews:
                 "albedo": ("IMAGE",),
                 "mr": ("IMAGE",),
                 "view_size": ("INT",{"default":512}),
-                "texture_size": ("INT",{"default":1024}),
+                "texture_size": ("INT",{"default":1024}),                
             },
         }
 
@@ -1534,7 +1534,72 @@ class Hy3D21UseMultiViews:
         paint_pipeline = Hunyuan3DPaintPipeline(conf)
         paint_pipeline.load_mesh(trimesh)
         
-        return (paint_pipeline, albedo, mr, camera_config)         
+        return (paint_pipeline, albedo, mr, camera_config)
+
+class Hy3D21UseMultiViewsFromMetaData:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "metadata_file": ("STRING",),
+                "view_size": ("INT",{"default":512}),
+                "texture_size": ("INT",{"default":1024}),                
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","HY3D21CAMERA",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","camera_config",)
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, trimesh, metadata_file, view_size, texture_size):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        
+        with open(metadata_file, 'r') as fr:
+            loaded_data = json.load(fr)
+            loaded_metaData = MetaData()
+            for key, value in loaded_data.items():
+                setattr(loaded_metaData, key, value)        
+        
+        conf = Hunyuan3DPaintConfig(view_size, loaded_metaData.camera_config["selected_camera_azims"], loaded_metaData.camera_config["selected_camera_elevs"], loaded_metaData.camera_config["selected_view_weights"], loaded_metaData.camera_config["ortho_scale"], texture_size)
+        paint_pipeline = Hunyuan3DPaintPipeline(conf)
+              
+        paint_pipeline.load_mesh(trimesh)
+        
+        dir_name = os.path.dirname(metadata_file)
+        
+        albedos = []
+        mrs = []
+        
+        if loaded_metaData.albedos_upscaled != None:
+            print('Using upscaled pictures ...')
+            for file in loaded_metaData.albedos_upscaled:
+                albedo_file = os.path.join(dir_name,file)
+                albedo = Image.open(albedo_file)
+                albedos.append(albedo)
+                
+            for file in loaded_metaData.mrs_upscaled:
+                mr_file = os.path.join(dir_name,file)
+                mr = Image.open(mr_file)
+                mrs.append(mr)
+        else:
+            print('Using non-upscaled pictures ...')
+            for file in loaded_metaData.albedos:
+                albedo_file = os.path.join(dir_name,file)
+                albedo = Image.open(albedo_file)
+                albedos.append(albedo)
+                
+            for file in loaded_metaData.mrs:
+                mr_file = os.path.join(dir_name,file)
+                mr = Image.open(mr_file)
+                mrs.append(mr)
+
+        albedos_tensor = convert_pil_images_to_tensor(albedos)
+        mrs_tensor = convert_pil_images_to_tensor(mrs)
+        
+        return (paint_pipeline, albedos_tensor, mrs_tensor, loaded_metaData.camera_config)        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1556,6 +1621,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21MeshGenerationBatch": Hy3D21MeshGenerationBatch,
     "Hy3D21GenerateMultiViewsBatch": Hy3D21GenerateMultiViewsBatch,
     "Hy3D21UseMultiViews": Hy3D21UseMultiViews,
+    "Hy3D21UseMultiViewsFromMetaData": Hy3D21UseMultiViewsFromMetaData,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1578,6 +1644,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21MeshlibDecimate": "Hunyuan 3D 2.1 Meshlib Decimation",
     "Hy3D21MeshGenerationBatch": "Hunyuan 3D 2.1 Mesh Generator from Folder",
     "Hy3D21GenerateMultiViewsBatch": "Hunyuan 3D 2.1 MultiViews Generator Batch",
-    "Hy3D21UseMultiViews": "Hunyuan 3D 2.1 Use MultiViews"
+    "Hy3D21UseMultiViews": "Hunyuan 3D 2.1 Use MultiViews",
+    "Hy3D21UseMultiViewsFromMetaData": "Hunyuan 3D 2.1 Use MultiViews From MetaData"
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
