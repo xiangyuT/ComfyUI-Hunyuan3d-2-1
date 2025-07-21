@@ -389,8 +389,8 @@ class Hy3DMultiViewsGenerator:
             },
         }
 
-    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","IMAGE","IMAGE","HY3D21CAMERA",)
-    RETURN_NAMES = ("pipeline", "albedo","mr","positions","normals","camera_config",)
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","IMAGE","IMAGE","HY3D21CAMERA","HY3D21METADATA",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","positions","normals","camera_config", "metadata")
     FUNCTION = "genmultiviews"
     CATEGORY = "Hunyuan3D21Wrapper"
 
@@ -412,7 +412,7 @@ class Hy3DMultiViewsGenerator:
         albedo_tensor = hy3dpaintimages_to_tensor(albedo)
         mr_tensor = hy3dpaintimages_to_tensor(mr)
         normals_tensor = hy3dpaintimages_to_tensor(normal_maps)
-        positions_tensor = hy3dpaintimages_to_tensor(position_maps)       
+        positions_tensor = hy3dpaintimages_to_tensor(position_maps)            
         
         return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor, camera_config,)       
         
@@ -1599,7 +1599,151 @@ class Hy3D21UseMultiViewsFromMetaData:
         albedos_tensor = convert_pil_images_to_tensor(albedos)
         mrs_tensor = convert_pil_images_to_tensor(mrs)
         
-        return (paint_pipeline, albedos_tensor, mrs_tensor, loaded_metaData.camera_config)        
+        return (paint_pipeline, albedos_tensor, mrs_tensor, loaded_metaData.camera_config)     
+
+class Hy3D21MultiViewsGeneratorWithMetaData:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "camera_config": ("HY3D21CAMERA",),
+                "view_size": ("INT", {"default": 512, "min": 512, "max":1024, "step":256}),
+                "image": ("IMAGE", {"tooltip": "Image to generate mesh from"}),
+                "steps": ("INT", {"default": 10, "min": 1, "max": 100, "step": 1, "tooltip": "Number of steps"}),
+                "guidance_scale": ("FLOAT", {"default": 3.0, "min": 1, "max": 10, "step": 0.1, "tooltip": "Guidance scale"}),
+                "texture_size": ("INT", {"default":1024,"min":512,"max":4096,"step":512}),
+                "unwrap_mesh": ("BOOLEAN", {"default":True}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "output_name":("STRING",),
+            },
+        }
+
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","HY3D21METADATA","IMAGE","IMAGE",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","metadata","positions","normals",)
+    FUNCTION = "genmultiviews"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def genmultiviews(self, trimesh, camera_config, view_size, image, steps, guidance_scale, texture_size, unwrap_mesh, seed, output_name):
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        
+        seed = seed % (2**32)
+        
+        conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)
+        paint_pipeline = Hunyuan3DPaintPipeline(conf)
+        
+        image = tensor2pil(image)
+        
+        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
+        
+        albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
+        
+        albedo_tensor = hy3dpaintimages_to_tensor(albedo)
+        mr_tensor = hy3dpaintimages_to_tensor(mr)
+        normals_tensor = hy3dpaintimages_to_tensor(normal_maps)
+        positions_tensor = hy3dpaintimages_to_tensor(position_maps)
+
+        output_dir_path = os.path.join(comfy_path, "output", "3D", output_name)
+        os.makedirs(output_dir_path, exist_ok=True)
+
+        metadata = MetaData()
+        metadata.mesh_file = output_name
+        metadata.camera_config = camera_config
+        metadata.albedos = []
+        metadata.mrs = []
+        
+        print('Saving Albedo and MR views ...')
+        for index, img in enumerate(albedo_tensor):
+            output_file_path = os.path.join(output_dir_path,f'Albedo_{index}.png')
+            pil_image = tensor2pil(img)
+            pil_image.save(output_file_path)
+            metadata.albedos.append(f'Albedo_{index}.png')
+            
+        for index, img in enumerate(mr_tensor):
+            output_file_path = os.path.join(output_dir_path,f'MR_{index}.png')
+            pil_image = tensor2pil(img)
+            pil_image.save(output_file_path)
+            metadata.mrs.append(f'MR_{index}.png')            
+        
+        return (paint_pipeline, albedo_tensor, mr_tensor, metadata, positions_tensor, normals_tensor,)  
+
+class Hy3DBakeMultiViewsWithMetaData:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "pipeline": ("HY3DPIPELINE", ),
+                "albedo": ("IMAGE", ),
+                "mr": ("IMAGE", ),
+                "metadata": ("HY3D21METADATA",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE","IMAGE","TRIMESH", "STRING", )
+    RETURN_NAMES = ("albedo", "mr", "trimesh", "output_glb_path", )
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+
+    def process(self, pipeline, albedo, mr, metadata):        
+        albedo = convert_tensor_images_to_pil(albedo)
+        mr = convert_tensor_images_to_pil(mr)
+        
+        output_mesh_name = metadata.mesh_file.replace(".glb","")
+        output_dir_path = os.path.join(comfy_path, "output", "3D", output_mesh_name)
+        
+        #detect if images have been upscaled
+        albedo1 = albedo[0]
+        width, height = albedo1.size
+        if width>pipeline.config.resolution:
+            print('Upscaled images detected. Saving Upscaled images ...')            
+            metadata.albedos_upscaled = []
+            metadata.mrs_upscaled = []
+            
+            for index, img in enumerate(albedo):
+                output_file_path = os.path.join(output_dir_path,f'Albedo_Upscaled_{index}.png')
+                img.save(output_file_path)
+                metadata.albedos_upscaled.append(f'Albedo_Upscaled_{index}.png')
+                
+            for index, img in enumerate(mr):
+                output_file_path = os.path.join(output_dir_path,f'MR_Upscaled_{index}.png')
+                img.save(output_file_path)
+                metadata.mrs_upscaled.append(f'MR_Upscaled_{index}.png')                
+        
+        camera_config = metadata.camera_config
+        texture, mask, texture_mr, mask_mr = pipeline.bake_from_multiview(albedo,mr,camera_config["selected_camera_elevs"], camera_config["selected_camera_azims"], camera_config["selected_view_weights"])
+        
+        albedo, mr = pipeline.inpaint(texture, mask, texture_mr, mask_mr)
+        
+        pipeline.set_texture_albedo(albedo)
+        pipeline.set_texture_mr(mr)
+                        
+        output_glb_path = os.path.join(output_dir_path,f'{output_mesh_name}.obj')
+        
+        pipeline.save_mesh(output_glb_path)
+
+        output_glb_path = os.path.join(output_dir_path,f'{output_mesh_name}.glb')
+        
+        trimesh = Trimesh.load(output_glb_path)
+        
+        texture_pil = convert_ndarray_to_pil(albedo)
+        texture_mr_pil = convert_ndarray_to_pil(mr)
+        texture_tensor = pil2tensor(texture_pil)
+        texture_mr_tensor = pil2tensor(texture_mr_pil)        
+        
+        pipeline.clean_memory()
+        
+        output_metadata_path = os.path.join(output_dir_path,'meta_data.json')
+        with open(output_metadata_path,'w') as fw:
+            json.dump(metadata.__dict__, indent="\t", fp=fw)            
+        
+        del pipeline
+        
+        mm.soft_empty_cache()
+        torch.cuda.empty_cache()
+        gc.collect() 
+        
+        return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1622,6 +1766,8 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21GenerateMultiViewsBatch": Hy3D21GenerateMultiViewsBatch,
     "Hy3D21UseMultiViews": Hy3D21UseMultiViews,
     "Hy3D21UseMultiViewsFromMetaData": Hy3D21UseMultiViewsFromMetaData,
+    "Hy3D21MultiViewsGeneratorWithMetaData": Hy3D21MultiViewsGeneratorWithMetaData,
+    "Hy3DBakeMultiViewsWithMetaData": Hy3DBakeMultiViewsWithMetaData,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1645,6 +1791,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21MeshGenerationBatch": "Hunyuan 3D 2.1 Mesh Generator from Folder",
     "Hy3D21GenerateMultiViewsBatch": "Hunyuan 3D 2.1 MultiViews Generator Batch",
     "Hy3D21UseMultiViews": "Hunyuan 3D 2.1 Use MultiViews",
-    "Hy3D21UseMultiViewsFromMetaData": "Hunyuan 3D 2.1 Use MultiViews From MetaData"
+    "Hy3D21UseMultiViewsFromMetaData": "Hunyuan 3D 2.1 Use MultiViews From MetaData",
+    "Hy3D21MultiViewsGeneratorWithMetaData": "Hunyuan 3D 2.1 MultiViews Generator With MetaData",
+    "Hy3DBakeMultiViewsWithMetaData": "Hunyuan 3D 2.1 Bake MultiViews With MetaData",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
