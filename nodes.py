@@ -15,6 +15,7 @@ import numpy as np
 import torch.nn.functional as F
 import trimesh as Trimesh
 import gc
+import json
 from .hy3dshape.hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
 from .hy3dshape.hy3dshape.postprocessors import FaceReducer, FloaterRemover, DegenerateFaceRemover
 from .hy3dshape.hy3dshape.rembg import BackgroundRemover
@@ -216,7 +217,17 @@ def convert_tensor_images_to_pil(images):
     for image in images:
         pil_array.append(tensor2pil(image))
         
-    return pil_array    
+    return pil_array 
+
+class MetaData:
+    def __init__(self):
+        self.camera_config = None
+        self.albedos = None
+        self.mrs = None
+        self.albedos_upscaled = None
+        self.mrs_upscaled = None
+        self.mesh_file = None
+    
         
 class Hy3DMeshGenerator:
     @classmethod
@@ -378,8 +389,8 @@ class Hy3DMultiViewsGenerator:
             },
         }
 
-    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","IMAGE","IMAGE",)
-    RETURN_NAMES = ("pipeline", "albedo","mr","positions","normals",)
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","IMAGE","IMAGE","HY3D21CAMERA",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","positions","normals","camera_config",)
     FUNCTION = "genmultiviews"
     CATEGORY = "Hunyuan3D21Wrapper"
 
@@ -403,7 +414,7 @@ class Hy3DMultiViewsGenerator:
         normals_tensor = hy3dpaintimages_to_tensor(normal_maps)
         positions_tensor = hy3dpaintimages_to_tensor(position_maps)       
         
-        return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor)       
+        return (paint_pipeline, albedo_tensor, mr_tensor, positions_tensor, normals_tensor, camera_config,)       
         
 class Hy3DBakeMultiViews:
     @classmethod
@@ -1293,6 +1304,7 @@ class Hy3D21GenerateMultiViewsBatch:
                 "upscale_multiviews": (["None","CustomModel"],{"default":"None"}),
                 "upscale_model_name": (folder_paths.get_filename_list("upscale_models"), ),
                 "export_multiviews": ("BOOLEAN",{"default":True, "tooltip":"Multiviews can be used to apply texture to a low poly mesh"}),
+                "export_metadata": ("BOOLEAN",{"default":True,"tooltip":"Exporta json file with camera config and multiviews"}),
             },
             "optional": {
                 "input_images_folder": ("STRING",),
@@ -1307,7 +1319,7 @@ class Hy3D21GenerateMultiViewsBatch:
     DESCRIPTION = "Process all meshes from a folder"
     OUTPUT_NODE = True
 
-    def process(self, output_folder, camera_config, view_size, steps, guidance_scale, texture_size, unwrap_mesh, seed, generate_random_seed, remove_background, skip_generated_mesh, upscale_multiviews, upscale_model_name, export_multiviews, input_images_folder = None, input_meshes_folder = None):       
+    def process(self, output_folder, camera_config, view_size, steps, guidance_scale, texture_size, unwrap_mesh, seed, generate_random_seed, remove_background, skip_generated_mesh, upscale_multiviews, upscale_model_name, export_multiviews, export_metadata, input_images_folder = None, input_meshes_folder = None):       
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()     
         rembg = BackgroundRemover()
@@ -1343,6 +1355,8 @@ class Hy3D21GenerateMultiViewsBatch:
                             os.makedirs(output_mesh_folder, exist_ok=True)
                             
                             print(f'Processing {file} with {input_meshes[0]} ...')
+                            metaData = MetaData()
+                            metaData.camera_config = camera_config
                             image = Image.open(file)
                             if remove_background:
                                 print('Removing background ...')
@@ -1357,13 +1371,18 @@ class Hy3D21GenerateMultiViewsBatch:
                             albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
                             
                             if export_multiviews:
+                                metaData.albedos = []
+                                metaData.mrs = []
+                                
                                 for index, img in enumerate(albedo):                                
                                     image_output_path = os.path.join(output_mesh_folder, f'Albedo_{index}.png')
                                     img.save(image_output_path)
+                                    metaData.albedos.append(f'Albedo_{index}.png')
                                     
                                 for index, img in enumerate(mr):
                                     image_output_path = os.path.join(output_mesh_folder, f'MR_{index}.png')
                                     img.save(image_output_path)                                    
+                                    metaData.mrs.append(f'MR_{index}.png')
                                                                        
 
                             if upscale_multiviews == "CustomModel":
@@ -1381,6 +1400,7 @@ class Hy3D21GenerateMultiViewsBatch:
                                     upscale_model.to(device)
                                 
                                 if upscale_model != None:
+                                    print('Upscaling Albedo ...')
                                     albedo_tensors = hy3dpaintimages_to_tensor(albedo)
                                     in_img = albedo_tensors.movedim(-1,-3).to(device)
 
@@ -1394,7 +1414,7 @@ class Hy3D21GenerateMultiViewsBatch:
                                             pbar = comfy.utils.ProgressBar(steps)
                                             s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
                                             oom = False
-                                        except model_management.OOM_EXCEPTION as e:
+                                        except mm.OOM_EXCEPTION as e:
                                             tile //= 2
                                             if tile < 128:
                                                 raise e
@@ -1405,10 +1425,13 @@ class Hy3D21GenerateMultiViewsBatch:
                                     albedo = convert_tensor_images_to_pil(s)
                                     
                                     if export_multiviews:
+                                        metaData.albedos_upscaled = []
                                         for index, img in enumerate(albedo):
                                             image_output_path = os.path.join(output_mesh_folder, f'Albedo_Upscaled_{index}.png')
-                                            img.save(image_output_path)   
+                                            img.save(image_output_path)
+                                            metaData.albedos_upscaled.append(f'Albedo_Upscaled_{index}.png')
                                     
+                                    print('Upscaling MR ...')
                                     mr_tensors = hy3dpaintimages_to_tensor(mr)
                                     in_img = mr_tensors.movedim(-1,-3).to(device)
 
@@ -1422,7 +1445,7 @@ class Hy3D21GenerateMultiViewsBatch:
                                             pbar = comfy.utils.ProgressBar(steps)
                                             s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
                                             oom = False
-                                        except model_management.OOM_EXCEPTION as e:
+                                        except mm.OOM_EXCEPTION as e:
                                             tile //= 2
                                             if tile < 128:
                                                 raise e
@@ -1433,12 +1456,15 @@ class Hy3D21GenerateMultiViewsBatch:
                                     mr = convert_tensor_images_to_pil(s) 
 
                                     if export_multiviews:
+                                        metaData.mrs_upscaled = []
                                         for index, img in enumerate(mr):
                                             image_output_path = os.path.join(output_mesh_folder, f'MR_Upscaled_{index}.png')
                                             img.save(image_output_path)
+                                            metaData.mrs_upscaled.append(f'MR_Upscaled_{index}.png')
                                     
                                     del upscale_model
                             
+                            print('Baking MultiViews ...')
                             texture, mask, texture_mr, mask_mr = paint_pipeline.bake_from_multiview(albedo,mr,camera_config["selected_camera_elevs"], camera_config["selected_camera_azims"], camera_config["selected_view_weights"])
                             
                             albedo, mr = paint_pipeline.inpaint(texture, mask, texture_mr, mask_mr)        
@@ -1448,6 +1474,12 @@ class Hy3D21GenerateMultiViewsBatch:
                             output_mesh_path = os.path.join(comfy_path, "temp", f"{output_file_name}.obj")
                             output_temp_path = paint_pipeline.save_mesh(output_mesh_path)                   
                             shutil.copyfile(output_temp_path, output_glb_path)
+                            metaData.mesh_file = f'{output_file_name}.glb'
+                            
+                            if export_metadata:
+                                output_metadata_path = os.path.join(output_mesh_folder,'meta_data.json')
+                                with open(output_metadata_path,'w') as fw:
+                                    json.dump(metaData.__dict__, indent="\t", fp=fw)
                             
                             processed_meshes.append(output_glb_path)
                             
@@ -1489,8 +1521,8 @@ class Hy3D21UseMultiViews:
             },
         }
 
-    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE",)
-    RETURN_NAMES = ("pipeline", "albedo","mr",)
+    RETURN_TYPES = ("HY3DPIPELINE", "IMAGE","IMAGE","HY3D21CAMERA",)
+    RETURN_NAMES = ("pipeline", "albedo","mr","camera_config",)
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
 
@@ -1502,7 +1534,7 @@ class Hy3D21UseMultiViews:
         paint_pipeline = Hunyuan3DPaintPipeline(conf)
         paint_pipeline.load_mesh(trimesh)
         
-        return (paint_pipeline, albedo, mr)         
+        return (paint_pipeline, albedo, mr, camera_config)         
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
