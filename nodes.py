@@ -49,6 +49,28 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 comfy_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 diffusions_dir = os.path.join(comfy_path, "models", "diffusers")
 
+def parse_string_to_int_list(number_string):
+  """
+  Parses a string containing comma-separated numbers into a list of integers.
+
+  Args:
+    number_string: A string containing comma-separated numbers (e.g., "20000,10000,5000").
+
+  Returns:
+    A list of integers parsed from the input string.
+    Returns an empty list if the input string is empty or None.
+  """
+  if not number_string:
+    return []
+
+  try:
+    # Split the string by comma and convert each part to an integer
+    int_list = [int(num.strip()) for num in number_string.split(',')]
+    return int_list
+  except ValueError as e:
+    print(f"Error converting string to integer: {e}. Please ensure all values are valid numbers.")
+    return []
+
 def hy3dpaintimages_to_tensor(images):
     tensors = []
     for pil_img in images:
@@ -925,7 +947,6 @@ class Hy3D21MeshUVWrap:
     CATEGORY = "Hunyuan3D21Wrapper"
 
     def process(self, trimesh):
-        from .hy3dpaint.utils.uvwrap_utils import mesh_uv_wrap
         trimesh = mesh_uv_wrap(trimesh)
         
         return (trimesh,)        
@@ -1097,6 +1118,7 @@ class Hy3D21MeshlibDecimate:
             settings.minFacesInPart = minFacesInPart
             
         settings.packMesh = True
+        settings.subdivideParts = subdivideParts
             
         new_mesh = postprocessmesh(trimesh.vertices, trimesh.faces, settings)
         
@@ -1745,7 +1767,123 @@ class Hy3DBakeMultiViewsWithMetaData:
         torch.cuda.empty_cache()
         gc.collect() 
         
-        return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)        
+        return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)  
+
+class Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "metadata_file": ("STRING",),
+                "view_size": ("INT",{"default":512}),
+                "texture_size": ("INT",{"default":1024}),
+                "target_face_nums": ("STRING",{"default":"20000,10000,5000"}),                
+            },
+        }
+
+    RETURN_TYPES = ("STRING", )
+    RETURN_NAMES = ("output_lowpoly_path", )
+    FUNCTION = "process"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    OUTPUT_NODE = True
+
+    def process(self, metadata_file, view_size, texture_size, target_face_nums):   
+        try:
+            import meshlib.mrmeshpy as mrmeshpy
+        except ImportError:
+            raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")
+            
+        device = mm.get_torch_device()
+        offload_device=mm.unet_offload_device()
+        output_lowpoly_path = ""
+        
+        with open(metadata_file, 'r') as fr:
+            loaded_data = json.load(fr)
+            loaded_metaData = MetaData()
+            for key, value in loaded_data.items():
+                setattr(loaded_metaData, key, value)        
+        
+        list_of_faces = parse_string_to_int_list(target_face_nums)
+        if len(list_of_faces)>0:
+            input_dir = os.path.dirname(metadata_file)
+            mesh_name = loaded_metaData.mesh_file.replace(".glb","").replace(".obj","")
+            mesh_file_path = os.path.join(input_dir, loaded_metaData.mesh_file)
+            
+            if os.path.exists(mesh_file_path):
+                conf = Hunyuan3DPaintConfig(view_size, loaded_metaData.camera_config["selected_camera_azims"], loaded_metaData.camera_config["selected_camera_elevs"], loaded_metaData.camera_config["selected_view_weights"], loaded_metaData.camera_config["ortho_scale"], texture_size)
+                
+                highpoly_mesh = Trimesh.load(mesh_file_path, force="mesh")
+                highpoly_mesh = Trimesh.Trimesh(vertices=highpoly_mesh.vertices, faces=highpoly_mesh.faces) # Remove texture coordinates
+                highpoly_faces_num = highpoly_mesh.faces.shape[0]
+                
+                albedos = []
+                mrs = []
+                
+                if loaded_metaData.albedos_upscaled != None:
+                    print('Using upscaled pictures ...')
+                    for file in loaded_metaData.albedos_upscaled:
+                        albedo_file = os.path.join(input_dir,file)
+                        albedo = Image.open(albedo_file)
+                        albedos.append(albedo)
+                        
+                    for file in loaded_metaData.mrs_upscaled:
+                        mr_file = os.path.join(input_dir,file)
+                        mr = Image.open(mr_file)
+                        mrs.append(mr)
+                else:
+                    print('Using non-upscaled pictures ...')
+                    for file in loaded_metaData.albedos:
+                        albedo_file = os.path.join(input_dir,file)
+                        albedo = Image.open(albedo_file)
+                        albedos.append(albedo)
+                        
+                    for file in loaded_metaData.mrs:
+                        mr_file = os.path.join(dir_name,file)
+                        mr = Image.open(mr_file)
+                        mrs.append(mr)
+
+                output_lowpoly_path = os.path.join(input_dir, "LowPoly")
+                
+                for target_face_num in list_of_faces:
+                    print('Processing {target_face_num} faces ...')
+                    pipeline = Hunyuan3DPaintPipeline(conf)
+                    output_dir_path = os.path.join(input_dir, "LowPoly", f"{target_face_num}")
+                    os.makedirs(output_dir_path, exist_ok=True)
+                    
+                    settings = mrmeshpy.DecimateSettings()
+                    faces_to_delete = highpoly_faces_num - target_face_num
+                    settings.maxDeletedFaces = faces_to_delete
+                    settings.subdivideParts = 16
+                    settings.packMesh = True
+                    
+                    print(f'Decimating to {target_face_num} faces ...')
+                    lowpoly_mesh = postprocessmesh(highpoly_mesh.vertices, highpoly_mesh.faces, settings)
+                    
+                    print('UV Unwrapping ...')
+                    lowpoly_mesh = mesh_uv_wrap(lowpoly_mesh)
+                    
+                    pipeline.load_mesh(lowpoly_mesh)
+                    
+                    camera_config = loaded_metaData.camera_config
+                    texture, mask, texture_mr, mask_mr = pipeline.bake_from_multiview(albedos,mrs,camera_config["selected_camera_elevs"], camera_config["selected_camera_azims"], camera_config["selected_view_weights"])
+                    
+                    albedo, mr = pipeline.inpaint(texture, mask, texture_mr, mask_mr)
+                    
+                    pipeline.set_texture_albedo(albedo)
+                    pipeline.set_texture_mr(mr)
+                                    
+                    output_glb_path = os.path.join(output_dir_path,f'{mesh_name}_{target_face_num}.obj')
+                    
+                    pipeline.save_mesh(output_glb_path)
+                    
+                    pipeline.clean_memory()
+                    
+            else:
+                print(f'Mesh file does not exist: {mesh_file_path}')
+        else:
+            print('target_face_nums is empty')       
+        
+        return (output_lowpoly_path,)        
 
 NODE_CLASS_MAPPINGS = {
     "Hy3DMeshGenerator": Hy3DMeshGenerator,
@@ -1770,6 +1908,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21UseMultiViewsFromMetaData": Hy3D21UseMultiViewsFromMetaData,
     "Hy3D21MultiViewsGeneratorWithMetaData": Hy3D21MultiViewsGeneratorWithMetaData,
     "Hy3DBakeMultiViewsWithMetaData": Hy3DBakeMultiViewsWithMetaData,
+    "Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData": Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1796,5 +1935,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21UseMultiViewsFromMetaData": "Hunyuan 3D 2.1 Use MultiViews From MetaData",
     "Hy3D21MultiViewsGeneratorWithMetaData": "Hunyuan 3D 2.1 MultiViews Generator With MetaData",
     "Hy3DBakeMultiViewsWithMetaData": "Hunyuan 3D 2.1 Bake MultiViews With MetaData",
+    "Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData": "Hunyuan 3D 2.1 HighPoly to LowPoly Bake MultiViews With MetaData",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
