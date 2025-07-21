@@ -1689,7 +1689,7 @@ class Hy3DBakeMultiViewsWithMetaData:
         albedo = convert_tensor_images_to_pil(albedo)
         mr = convert_tensor_images_to_pil(mr)
         
-        output_mesh_name = metadata.mesh_file.replace(".glb","")
+        output_mesh_name = metadata.mesh_file
         output_dir_path = os.path.join(comfy_path, "output", "3D", output_mesh_name)
         
         #detect if images have been upscaled
@@ -1732,6 +1732,8 @@ class Hy3DBakeMultiViewsWithMetaData:
         texture_mr_tensor = pil2tensor(texture_mr_pil)        
         
         pipeline.clean_memory()
+        
+        metadata.mesh_file = f'{output_mesh_name}.glb'
         
         output_metadata_path = os.path.join(output_dir_path,'meta_data.json')
         with open(output_metadata_path,'w') as fw:
