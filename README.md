@@ -1,3 +1,7 @@
+Certainly! Here's your complete, polished README with the updated paths and all improvements integrated, ready for use:
+
+---
+
 # 🌀 ComfyUI Wrapper for [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
 
 > **ComfyUI integration** for Tencent's powerful **Hunyuan3D-2.1** model. Supports textured 3D generation with optional high-quality UV mapping.
@@ -12,7 +16,7 @@
 
 ### 🔧 Required Checkpoints
 
-Place the following checkpoints into the appropriate folders under `ComfyUI`:
+Place the following checkpoints into the corresponding folders under your `ComfyUI` directory:
 
 ```
 ComfyUI/
@@ -27,23 +31,55 @@ ComfyUI/
 
 ## ⚙️ Installation Guide
 
-### 1. Install Dependencies
+> Tested on **Windows 11** with **Python 3.12** and **Torch >= 2.6.0 + cu126**. Compatible with the latest ComfyUI Portable release.
+
+### 1. Install Python Dependencies
+
+For a standard Python environment:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r ComfyUI/custom_nodes/ComfyUI-Hunyuan3DWrapper/requirements.txt
 ```
 
-> 📌 **Note**: Requires **Torch >= 2.6.0**
+For **ComfyUI Portable**:
+
+```bash
+python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\requirements.txt
+```
 
 ---
 
-### 2. Compile TextureGen Modules
+### 2. Install or Compile Texture Generation Modules
 
-You need to build two C++ extensions:
+Two critical C++ extensions need to be installed: the **custom rasterizer** and the **differentiable renderer**.
+
+#### Option A: Use Precompiled Wheels (Recommended)
+
+For standard Python:
+
+```bash
+pip install wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
+```
+
+For ComfyUI Portable:
+
+```bash
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
+```
+
+> If you are running **Torch 2.6.0 + cu126**, use the updated wheel instead:
+
+```bash
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\wheels\custom_rasterizer-0.1.0+torch260.cuda126-cp312-cp312-win_amd64.whl
+```
+
+---
+
+#### Option B: Manual Compilation (for advanced users)
 
 ```bash
 # Compile custom rasterizer
-cd hy3dpaint/custom_rasterizer
+cd ComfyUI/custom_nodes/ComfyUI-Hunyuan3DWrapper/hy3dpaint/custom_rasterizer
 python setup.py install
 
 # Compile differentiable renderer
@@ -51,35 +87,33 @@ cd ../DifferentiableRenderer
 python setup.py install
 ```
 
-> ✅ You can also try precompiled `.whl` files under the `dist/` folders of each directory.
-
 ---
 
-## 🩻 Fix UV Wrapping for High Poly Meshes (Xatlas Upgrade)
+## 🩻 Optional: Fix UV Wrapping for High Poly Meshes (Patched Xatlas)
+
+This upgrade improves UV unwrapping stability for complex meshes.
 
 ```bash
 # Step 1: Uninstall existing xatlas
 python_embeded\python.exe -m pip uninstall xatlas
 
-# Step 2: Clone updated xatlas wrapper
+# Step 2: Clone updated xatlas-python wrapper
 cd ComfyUI_windows_portable
 git clone --recursive https://github.com/mworchel/xatlas-python.git
 
 # Step 3: Replace internal xatlas source
-cd .\xatlas-python\extern
+cd xatlas-python\extern
 del /s /q xatlas
 git clone --recursive https://github.com/jpcy/xatlas
 
-# Step 4: Patch xatlas.cpp
-# File: xatlas-python/extern/xatlas/source/xatlas/xatlas.cpp
+# Step 4: Patch source file
+# In xatlas-python/extern/xatlas/source/xatlas/xatlas.cpp:
+#   Line 6774: change `#if 0` → `//#if 0`
+#   Line 6778: change `#endif` → `//#endif`
 
-# Change:
-#   Line 6774:   #if 0      →   //#if 0
-#   Line 6778:   #endif     →   //#endif
-
-# Step 5: Reinstall patched version
+# Step 5: Install patched xatlas wrapper
 cd ../../..
-.\python_embeded\python.exe -m pip install .\xatlas-python\
+python_embeded\python.exe -m pip install .\xatlas-python\
 ```
 
 ---
@@ -88,19 +122,22 @@ cd ../../..
 
 ```
 ComfyUI/
-├── hy3dpaint/
-│   ├── custom_rasterizer/         # Contains custom rasterizer module
-│   │   ├── setup.py
-│   │   └── dist/
-│   ├── DifferentiableRenderer/    # Differentiable renderer
-│   │   ├── setup.py
-│   │   └── dist/
+├── custom_nodes/
+│   └── ComfyUI-Hunyuan3DWrapper/
+│       ├── hy3dpaint/
+│       │   ├── custom_rasterizer/         # Custom rasterizer module
+│       │   │   ├── setup.py
+│       │   │   └── dist/
+│       │   ├── DifferentiableRenderer/    # Differentiable renderer
+│       │   │   ├── setup.py
+│       │   │   └── dist/
+│       ├── wheels/                        # Precompiled wheel files
 ├── models/
 │   ├── diffusion_models/
-│   │   └── hunyuan3d-dit-v2-1.ckpt
+│   │   └── [hunyuan3d-dit-v2-1.ckpt](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main/hunyuan3d-dit-v2-1)
 │   └── vae/
-│       └── hunyuan3d-vae-v2-1.ckpt
-├── xatlas-python/                 # Patched UV unwrapper
+│       └── [hunyuan3d-vae-v2-1.ckpt](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main/hunyuan3d-vae-v2-1)
+├── xatlas-python/                         # Patched UV unwrapper (optional)
 │   └── extern/
 │       └── xatlas/
 ```
@@ -109,6 +146,10 @@ ComfyUI/
 
 ## 🙏 Acknowledgements
 
-* **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** for the initial wrapper
-* TrueMike, Agee, Palindar, and the amazing community on Discord
-* The Tencent team for [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
+* **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** — Original wrapper developer
+* TrueMike, Agee, Palindar, and the vibrant Discord community
+* Tencent team for the incredible [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1) model
+
+---
+
+If you'd like, I can help generate a quick start guide or usage examples next! Would you want that?
