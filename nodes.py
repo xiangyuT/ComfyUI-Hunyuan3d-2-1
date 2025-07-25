@@ -455,8 +455,7 @@ class Hy3DBakeMultiViews:
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def process(self, pipeline, camera_config, albedo, mr):
-        
+    def process(self, pipeline, camera_config, albedo, mr):        
         albedo = convert_tensor_images_to_pil(albedo)
         mr = convert_tensor_images_to_pil(mr)
         
@@ -770,9 +769,12 @@ class Hy3D21ResizeImages:
                 images[i] = images[i].resize((width,height), resampling)
                 images[i] = pil2tensor(images[i])
         elif isinstance(images, torch.Tensor):
-            images = tensor2pil(images)
-            images = images.resize((width,height), resampling)
-            images = pil2tensor(images)
+            pil_images = convert_tensor_images_to_pil(images)
+            for index, img in enumerate(pil_images):
+                img = img.resize((width,height), resampling)
+                pil_images[index] = img
+            tensors = hy3dpaintimages_to_tensor(pil_images)
+            return (tensors,)            
         elif isinstance(images, Image):
             images = images.resize((width,height), resampling)
             images = pil2tensor(images)
