@@ -1,63 +1,114 @@
+# 🌀 ComfyUI Wrapper for [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
 
-# ComfyUI wrapper for [Hunyuan3D-2.1]([https://github.com/Tencent/Hunyuan3D-2](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1))
+> **ComfyUI integration** for Tencent's powerful **Hunyuan3D-2.1** model. Supports textured 3D generation with optional high-quality UV mapping.
 
-GitHub: [https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
+---
 
-## Models
-Main model, original: [https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main)
+## 📦 Repository & Models
 
-Hunyuan3d-dit-v2-1 checkpoint to be installed in diffusion_models folder
+* **GitHub:** [Tencent-Hunyuan/Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
+* **Model Weights (HuggingFace):**
+  👉 [Main page](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main)
 
-Hunyuan3d-vae-v2-1 checkpoint to be installed in vae folder
+### 🔧 Required Checkpoints
 
+Place the following checkpoints into the appropriate folders under `ComfyUI`:
 
-# Installation
+```
+ComfyUI/
+├── models/
+│   ├── diffusion_models/
+│   │   └── hunyuan3d-dit-v2-1.ckpt
+│   ├── vae/
+│   │   └── hunyuan3d-vae-v2-1.ckpt
+```
 
+---
+
+## ⚙️ Installation Guide
+
+### 1. Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-For the texturegen part compilation is needed:
-
-Minimum version for Torch is v2.6.0
-
-Go in the folder hy3dpaint/custom_rasterizer and execute this command: `python setup.py install`
-
-Go in the folder hy3dpaint/DifferentiableRenderer and execute this command: `python setup.py install`
-
-Some precompiled wheels are saved in dist folders
-
-I let you check it in hy3dpaint/custom_rasterizer/dist and hy3dpaint/DifferentiableRenderer/dist
+> 📌 **Note**: Requires **Torch >= 2.6.0**
 
 ---
 
-# Xatlas upgrade procedure to fix UV wrapping high poly meshes
+### 2. Compile TextureGen Modules
 
-`python_embeded\python.exe -m pip uninstall xatlas`
+You need to build two C++ extensions:
 
-in the portable root folder (`ComfyUI_windows_portable`):
+```bash
+# Compile custom rasterizer
+cd hy3dpaint/custom_rasterizer
+python setup.py install
 
-`git clone --recursive https://github.com/mworchel/xatlas-python.git`
+# Compile differentiable renderer
+cd ../DifferentiableRenderer
+python setup.py install
+```
 
-`cd .\xatlas-python\extern`
-
-delete `xatlas` folder 
-
-`git clone --recursive https://github.com/jpcy/xatlas`
-
-in `xatlas-python\extern\xatlas\source\xatlas` modify `xatlas.cpp`
-
-change line 6774: `#if 0` to `//#if 0`
-
-change line 6778: `#endif` to `//#endif`
-
-Finally go back to portable root (`ComfyUI_windows_portable`) folder:
-
-`.\python_embeded\python.exe -m pip install .\xatlas-python\`
+> ✅ You can also try precompiled `.whl` files under the `dist/` folders of each directory.
 
 ---
 
-## Acknowledgements
+## 🩻 Fix UV Wrapping for High Poly Meshes (Xatlas Upgrade)
 
-I would like to thank
-kijai for [https://github.com/kijai/ComfyUI-Hunyuan3DWrapper](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)
+```bash
+# Step 1: Uninstall existing xatlas
+python_embeded\python.exe -m pip uninstall xatlas
 
-People on Discord, TrueMike, Agee, Palindar and everyone else on this community
+# Step 2: Clone updated xatlas wrapper
+cd ComfyUI_windows_portable
+git clone --recursive https://github.com/mworchel/xatlas-python.git
+
+# Step 3: Replace internal xatlas source
+cd .\xatlas-python\extern
+del /s /q xatlas
+git clone --recursive https://github.com/jpcy/xatlas
+
+# Step 4: Patch xatlas.cpp
+# File: xatlas-python/extern/xatlas/source/xatlas/xatlas.cpp
+
+# Change:
+#   Line 6774:   #if 0      →   //#if 0
+#   Line 6778:   #endif     →   //#endif
+
+# Step 5: Reinstall patched version
+cd ../../..
+.\python_embeded\python.exe -m pip install .\xatlas-python\
+```
+
+---
+
+## 📂 Directory Overview
+
+```
+ComfyUI/
+├── hy3dpaint/
+│   ├── custom_rasterizer/         # Contains custom rasterizer module
+│   │   ├── setup.py
+│   │   └── dist/
+│   ├── DifferentiableRenderer/    # Differentiable renderer
+│   │   ├── setup.py
+│   │   └── dist/
+├── models/
+│   ├── diffusion_models/
+│   │   └── hunyuan3d-dit-v2-1.ckpt
+│   └── vae/
+│       └── hunyuan3d-vae-v2-1.ckpt
+├── xatlas-python/                 # Patched UV unwrapper
+│   └── extern/
+│       └── xatlas/
+```
+
+---
+
+## 🙏 Acknowledgements
+
+* **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** for the initial wrapper
+* TrueMike, Agee, Palindar, and the amazing community on Discord
+* The Tencent team for [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
