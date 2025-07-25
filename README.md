@@ -1,7 +1,3 @@
-Certainly! Here's your complete, polished README with the updated paths and all improvements integrated, ready for use:
-
----
-
 # 🌀 ComfyUI Wrapper for [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1)
 
 > **ComfyUI integration** for Tencent's powerful **Hunyuan3D-2.1** model. Supports textured 3D generation with optional high-quality UV mapping.
@@ -44,7 +40,7 @@ python -m pip install -r ComfyUI/custom_nodes/ComfyUI-Hunyuan3DWrapper/requireme
 For **ComfyUI Portable**:
 
 ```bash
-python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\requirements.txt
+python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\requirements.txt
 ```
 
 ---
@@ -64,13 +60,13 @@ pip install wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
 For ComfyUI Portable:
 
 ```bash
-python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
 ```
 
 > If you are running **Torch 2.6.0 + cu126**, use the updated wheel instead:
 
 ```bash
-python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3DWrapper\wheels\custom_rasterizer-0.1.0+torch260.cuda126-cp312-cp312-win_amd64.whl
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\wheels\custom_rasterizer-0.1.0+torch260.cuda126-cp312-cp312-win_amd64.whl
 ```
 
 ---
@@ -79,7 +75,7 @@ python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3DW
 
 ```bash
 # Compile custom rasterizer
-cd ComfyUI/custom_nodes/ComfyUI-Hunyuan3DWrapper/hy3dpaint/custom_rasterizer
+cd ComfyUI/custom_nodes/ComfyUI-Hunyuan3d-2-1/hy3dpaint/custom_rasterizer
 python setup.py install
 
 # Compile differentiable renderer
@@ -116,6 +112,19 @@ cd ../../..
 python_embeded\python.exe -m pip install .\xatlas-python\
 ```
 
+```python
+python_embeded\python.exe -m pip uninstall -y xatlas; `
+cd ComfyUI_windows_portable; `
+if (Test-Path xatlas-python) { Remove-Item xatlas-python -Recurse -Force }; `
+git clone --recursive https://github.com/mworchel/xatlas-python.git; `
+cd xatlas-python\extern; `
+if (Test-Path xatlas) { Remove-Item xatlas -Recurse -Force }; `
+git clone --recursive https://github.com/jpcy/xatlas; `
+(Get-Content .\xatlas\source\xatlas\xatlas.cpp) -replace '#if 0', '//#if 0' -replace '#endif', '//#endif' | Set-Content .\xatlas\source\xatlas\xatlas.cpp; `
+cd ..\..\..; `
+python_embeded\python.exe -m pip install .\xatlas-python\
+```
+
 ---
 
 ## 📂 Directory Overview
@@ -149,7 +158,3 @@ ComfyUI/
 * **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** — Original wrapper developer
 * TrueMike, Agee, Palindar, and the vibrant Discord community
 * Tencent team for the incredible [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1) model
-
----
-
-If you'd like, I can help generate a quick start guide or usage examples next! Would you want that?
