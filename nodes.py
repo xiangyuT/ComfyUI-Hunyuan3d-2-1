@@ -1125,6 +1125,56 @@ class Hy3D21MeshlibDecimate:
         new_mesh = postprocessmesh(trimesh.vertices, trimesh.faces, settings)
         
         return (new_mesh, )    
+        
+class Hy3D21SimpleMeshlibDecimate:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "trimesh": ("TRIMESH",),
+                "subdivideParts": ("INT",{"default":16, "min":1,"max":64,"step":1, "tooltip":"Should be the number of CPU/Core"}),
+            },
+            "optional":{
+                "target_face_num": ("INT",{"min":0,"max":10000000} ),
+                "target_face_ratio": ("FLOAT", {"min":0.000,"max":0.999}),
+            }
+        }
+
+    RETURN_TYPES = ("TRIMESH",)
+    RETURN_NAMES = ("trimesh",)
+    FUNCTION = "decimate"
+    CATEGORY = "Hunyuan3D21Wrapper"
+    DESCRIPTION = "Decimate the mesh using meshlib: https://meshlib.io/"
+
+    def decimate(self, trimesh, subdivideParts, target_face_num=0,target_face_ratio=0.0):
+        try:
+            import meshlib.mrmeshpy as mrmeshpy
+        except ImportError:
+            raise ImportError("meshlib not found. Please install it using 'pip install meshlib'")
+
+        if target_face_num == 0 and target_face_ratio == 0.0:
+            raise ValueError('target_face_num or target_face_ratio must be set')
+
+        current_faces_num = trimesh.faces.shape[0]
+        print(f'Current Faces Number: {current_faces_num}')
+
+        settings = mrmeshpy.DecimateSettings()
+        if target_face_num > 0:
+            faces_to_delete = current_faces_num - target_face_num
+            settings.maxDeletedFaces = faces_to_delete
+        elif target_face_ratio > 0.0:
+            target_faces = int(current_faces_num * target_face_ratio)
+            faces_to_delete = current_faces_num - target_faces
+            settings.maxDeletedFaces = faces_to_delete
+        else:
+            raise ValueError('target_face_num or target_face_ratio must be set')        
+            
+        settings.packMesh = True
+        settings.subdivideParts = subdivideParts
+            
+        new_mesh = postprocessmesh(trimesh.vertices, trimesh.faces, settings)
+        
+        return (new_mesh, )          
 
 class Hy3D21MeshGenerationBatch:
     @classmethod
@@ -1911,6 +1961,7 @@ NODE_CLASS_MAPPINGS = {
     "Hy3D21MultiViewsGeneratorWithMetaData": Hy3D21MultiViewsGeneratorWithMetaData,
     "Hy3DBakeMultiViewsWithMetaData": Hy3DBakeMultiViewsWithMetaData,
     "Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData": Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData,
+    "Hy3D21SimpleMeshlibDecimate": Hy3D21SimpleMeshlibDecimate,
     #"Hy3D21MultiViewsMeshGenerator": Hy3D21MultiViewsMeshGenerator,
     }
     
@@ -1938,5 +1989,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Hy3D21MultiViewsGeneratorWithMetaData": "Hunyuan 3D 2.1 MultiViews Generator With MetaData",
     "Hy3DBakeMultiViewsWithMetaData": "Hunyuan 3D 2.1 Bake MultiViews With MetaData",
     "Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData": "Hunyuan 3D 2.1 HighPoly to LowPoly Bake MultiViews With MetaData",
+    "Hy3D21SimpleMeshlibDecimate": "Hunyuan 3D 2.1 Simple Meshlib Decimation",
     #"Hy3D21MultiViewsMeshGenerator": "Hunyuan 3D 2.1 MultiViews Mesh Generator"
     }
