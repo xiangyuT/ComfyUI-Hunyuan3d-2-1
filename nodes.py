@@ -427,7 +427,9 @@ class Hy3DMultiViewsGenerator:
         
         image = tensor2pil(image)
         
-        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
+        temp_folder_path = os.path.join(comfy_path, "temp")
+        os.makedirs(temp_folder_path, exist_ok=True)        
+        temp_output_path = os.path.join(temp_folder_path, "textured_mesh.obj")
         
         albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
@@ -504,8 +506,10 @@ class Hy3DInPaint:
         
         pipeline.set_texture_albedo(albedo)
         pipeline.set_texture_mr(mr)
-        
-        output_mesh_path = os.path.join(comfy_path, "temp", f"{output_mesh_name}.obj")
+
+        temp_folder_path = os.path.join(comfy_path, "temp")
+        os.makedirs(temp_folder_path, exist_ok=True)        
+        output_mesh_path = os.path.join(temp_folder_path, f"{output_mesh_name}.obj")
         output_temp_path = pipeline.save_mesh(output_mesh_path)
         
         output_glb_path = os.path.join(comfy_path, "output", f"{output_mesh_name}.glb")
@@ -1406,7 +1410,9 @@ class Hy3D21GenerateMultiViewsBatch:
             if nb_pictures>0:                     
                 conf = Hunyuan3DPaintConfig(view_size, camera_config["selected_camera_azims"], camera_config["selected_camera_elevs"], camera_config["selected_view_weights"], camera_config["ortho_scale"], texture_size)                                
                 
-                temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
+                temp_folder_path = os.path.join(comfy_path, "temp")
+                os.makedirs(temp_folder_path, exist_ok=True)
+                temp_output_path = os.path.join(temp_folder_path, "textured_mesh.obj")
                 
                 pbar = ProgressBar(nb_pictures)
                 for file in files:                    
@@ -1709,7 +1715,9 @@ class Hy3D21MultiViewsGeneratorWithMetaData:
         
         image = tensor2pil(image)
         
-        temp_output_path = os.path.join(comfy_path, "temp", "textured_mesh.obj")
+        temp_folder_path = os.path.join(comfy_path, "temp")
+        os.makedirs(temp_folder_path, exist_ok=True)        
+        temp_output_path = os.path.join(temp_folder_path, "textured_mesh.obj")
         
         albedo, mr, normal_maps, position_maps = paint_pipeline(mesh=trimesh, image_path=image, output_mesh_path=temp_output_path, num_steps=steps, guidance_scale=guidance_scale, unwrap=unwrap_mesh, seed=seed)
         
