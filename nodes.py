@@ -515,7 +515,7 @@ class Hy3DInPaint:
         output_glb_path = os.path.join(comfy_path, "output", f"{output_mesh_name}.glb")
         shutil.copyfile(output_temp_path, output_glb_path)
         
-        trimesh = Trimesh.load(output_glb_path)
+        trimesh = Trimesh.load(output_glb_path, force="mesh")
         
         texture_pil = convert_ndarray_to_pil(albedo)
         texture_mr_pil = convert_ndarray_to_pil(mr)
