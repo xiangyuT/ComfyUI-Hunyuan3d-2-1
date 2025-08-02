@@ -254,14 +254,14 @@ class Hunyuan3DPaintPipeline:
         
         return output_glb_path
         
-    def inpaint(self, albedo, albedo_mask, mr, mr_mask):
+    def inpaint(self, albedo, albedo_mask, mr, mr_mask, vertex_inpaint, method):
         #mask_np = np.asarray(albedo)
         mask_np = (albedo_mask.squeeze(-1).cpu().numpy() * 255).astype(np.uint8)
-        texture = self.view_processor.texture_inpaint(albedo, mask_np)
+        texture = self.view_processor.texture_inpaint(albedo, mask_np, vertex_inpaint, method)
         
         mask_mr_np = (mr_mask.squeeze(-1).cpu().numpy() * 255).astype(np.uint8)
         #mask_mr_np = np.asarray(mr_mask)
-        texture_mr = self.view_processor.texture_inpaint(mr, mask_mr_np)
+        texture_mr = self.view_processor.texture_inpaint(mr, mask_mr_np, vertex_inpaint, method)
         
         return texture, texture_mr
         
