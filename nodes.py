@@ -486,7 +486,6 @@ class Hy3DInPaint:
                 "mr": ("NPARRAY", ),
                 "mr_mask": ("NPARRAY",),
                 "output_mesh_name": ("STRING",),
-                "mode": (["VerticesAndCV2","VerticesOnly","CV2Only"],{"default":"VerticesAndCV2"}),
             },
         }
 
@@ -496,7 +495,7 @@ class Hy3DInPaint:
     CATEGORY = "Hunyuan3D21Wrapper"
     OUTPUT_NODE = True
 
-    def process(self, pipeline, albedo, albedo_mask, mr, mr_mask, output_mesh_name, mode):
+    def process(self, pipeline, albedo, albedo_mask, mr, mr_mask, output_mesh_name):
         
         #albedo = tensor2pil(albedo)
         #albedo_mask = tensor2pil(albedo_mask)
@@ -504,12 +503,7 @@ class Hy3DInPaint:
         #mr_mask = tensor2pil(mr_mask)       
         
         vertex_inpaint = True
-        method = "NS"
-        
-        if mode=="VerticesOnly":
-            method = ""
-        elif mode=="CV2Only":
-            vertex_inpaint = False
+        method = "NS"       
         
         albedo, mr = pipeline.inpaint(albedo, albedo_mask, mr, mr_mask, vertex_inpaint, method)
         
@@ -1392,7 +1386,6 @@ class Hy3D21GenerateMultiViewsBatch:
                 "upscale_model_name": (folder_paths.get_filename_list("upscale_models"), ),
                 "export_multiviews": ("BOOLEAN",{"default":True, "tooltip":"Multiviews can be used to apply texture to a low poly mesh"}),
                 "export_metadata": ("BOOLEAN",{"default":True,"tooltip":"Exporta json file with camera config and multiviews"}),
-                "mode": (["VerticesAndCV2","VerticesOnly","CV2Only"],{"default":"VerticesAndCV2"}),
             },
             "optional": {
                 "input_images_folder": ("STRING",),
@@ -1407,20 +1400,14 @@ class Hy3D21GenerateMultiViewsBatch:
     DESCRIPTION = "Process all meshes from a folder"
     OUTPUT_NODE = True
 
-    def process(self, output_folder, camera_config, view_size, steps, guidance_scale, texture_size, unwrap_mesh, seed, generate_random_seed, remove_background, skip_generated_mesh, upscale_multiviews, upscale_model_name, export_multiviews, export_metadata, mode, input_images_folder = None, input_meshes_folder = None):       
+    def process(self, output_folder, camera_config, view_size, steps, guidance_scale, texture_size, unwrap_mesh, seed, generate_random_seed, remove_background, skip_generated_mesh, upscale_multiviews, upscale_model_name, export_multiviews, export_metadata, input_images_folder = None, input_meshes_folder = None):       
         device = mm.get_torch_device()
         offload_device=mm.unet_offload_device()     
         rembg = BackgroundRemover()
         processed_meshes = []
         
         vertex_inpaint = True
-        method = "NS"
-        
-        if mode=="VerticesOnly":
-            method = ""
-        elif mode=="CV2Only":
-            vertex_inpaint = False        
-        
+        method = "NS"        
         
         if input_images_folder != None and input_meshes_folder != None:
             files = get_picture_files(input_images_folder)
@@ -1778,7 +1765,6 @@ class Hy3DBakeMultiViewsWithMetaData:
                 "albedo": ("IMAGE", ),
                 "mr": ("IMAGE", ),
                 "metadata": ("HY3D21METADATA",),
-                "mode": (["VerticesAndCV2","VerticesOnly","CV2Only"],{"default":"VerticesAndCV2"}),
             },
         }
 
@@ -1787,14 +1773,9 @@ class Hy3DBakeMultiViewsWithMetaData:
     FUNCTION = "process"
     CATEGORY = "Hunyuan3D21Wrapper"
 
-    def process(self, pipeline, albedo, mr, metadata, mode):  
+    def process(self, pipeline, albedo, mr, metadata):  
         vertex_inpaint = True
-        method = "NS"
-        
-        if mode=="VerticesOnly":
-            method = ""
-        elif mode=="CV2Only":
-            vertex_inpaint = False
+        method = "NS"       
         
         albedo = convert_tensor_images_to_pil(albedo)
         mr = convert_tensor_images_to_pil(mr)
@@ -1865,8 +1846,7 @@ class Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData:
                 "metadata_file": ("STRING",),
                 "view_size": ("INT",{"default":512}),
                 "texture_size": ("INT",{"default":1024}),
-                "target_face_nums": ("STRING",{"default":"20000,10000,5000"}),
-                "mode": (["VerticesAndCV2","VerticesOnly","CV2Only"],{"default":"VerticesAndCV2"}),                
+                "target_face_nums": ("STRING",{"default":"20000,10000,5000"}),            
             },
         }
 
@@ -1876,7 +1856,7 @@ class Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData:
     CATEGORY = "Hunyuan3D21Wrapper"
     OUTPUT_NODE = True
 
-    def process(self, metadata_file, view_size, texture_size, target_face_nums, mode):   
+    def process(self, metadata_file, view_size, texture_size, target_face_nums):   
         try:
             import meshlib.mrmeshpy as mrmeshpy
         except ImportError:
@@ -1888,11 +1868,6 @@ class Hy3DHighPolyToLowPolyBakeMultiViewsWithMetaData:
         
         vertex_inpaint = True
         method = "NS"
-        
-        if mode=="VerticesOnly":
-            method = ""
-        elif mode=="CV2Only":
-            vertex_inpaint = False        
         
         with open(metadata_file, 'r') as fr:
             loaded_data = json.load(fr)
