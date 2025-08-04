@@ -104,8 +104,8 @@ git clone --recursive https://github.com/jpcy/xatlas
 
 # Step 4: Patch source file
 # In xatlas-python/extern/xatlas/source/xatlas/xatlas.cpp:
-#   Line 6774: change `#if 0` → `//#if 0`
-#   Line 6778: change `#endif` → `//#endif`
+Line 6774: change `#if 0` → `//#if 0`
+Line 6778: change `#endif` → `//#endif`
 
 # Step 5: Install patched xatlas wrapper
 cd ../../..
@@ -155,6 +155,6 @@ ComfyUI/
 
 ## 🙏 Acknowledgements
 
-* **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** — Original wrapper developer
+* **[kijai](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)** — Original wrapper developer for Hunyuan3D v2.0
 * TrueMike, Agee, Palindar, and the vibrant Discord community
 * Tencent team for the incredible [Hunyuan3D-2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1) model
