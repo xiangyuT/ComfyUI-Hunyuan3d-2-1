@@ -150,15 +150,14 @@ python_embeded\python.exe -m pip install .\xatlas-python\
 ```
 ComfyUI/
 ├── custom_nodes/
-│   └── ComfyUI-Hunyuan3DWrapper/
+│   └── ComfyUI-Hunyuan3d-2-1/
 │       ├── hy3dpaint/
 │       │   ├── custom_rasterizer/         # Custom rasterizer module
 │       │   │   ├── setup.py
-│       │   │   └── dist/
+│       │   │   └── dist/                  # Precompiled wheels
 │       │   ├── DifferentiableRenderer/    # Differentiable renderer
 │       │   │   ├── setup.py
-│       │   │   └── dist/
-│       ├── wheels/                        # Precompiled wheel files
+│       │   │   └── dist/                  # Precompiled wheels
 ├── models/
 │   ├── diffusion_models/
 │   │   └── [hunyuan3d-dit-v2-1.ckpt](https://huggingface.co/tencent/Hunyuan3D-2.1/tree/main/hunyuan3d-dit-v2-1)
