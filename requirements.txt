@@ -10,7 +10,7 @@ transformers
 diffusers
 accelerate
 pytorch-lightning
-opencv2-python
+opencv-python
 huggingface-hub
 safetensors
 scikit-image
