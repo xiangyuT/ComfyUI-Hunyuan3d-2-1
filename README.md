@@ -51,22 +51,40 @@ Two critical C++ extensions need to be installed: the **custom rasterizer** and 
 
 #### Option A: Use Precompiled Wheels (Recommended)
 
+#### Custom Rasterizer
+
+You will find precompiled wheels in `hy3dpain\custom_rasterizer\dist` folder
+
 For standard Python:
 
+Example, if you are on Python 3.12:
+
 ```bash
-pip install wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
+pip install custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
 ```
 
 For ComfyUI Portable:
 
 ```bash
-python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\wheels\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\hy3dpaint\custom_rasterizer\dist\custom_rasterizer-0.1-cp312-cp312-win_amd64.whl
 ```
 
-> If you are running **Torch 2.6.0 + cu126**, use the updated wheel instead:
+#### Differentiable Renderer
+
+You will find precompiled wheels in `hy3dpaint\DifferentiableRenderer\dist` folder
+
+For standard Python:
+
+Example, if you are on Python 3.12:
 
 ```bash
-python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\wheels\custom_rasterizer-0.1.0+torch260.cuda126-cp312-cp312-win_amd64.whl
+pip install mesh_inpaint_processor-0.0.0-cp312-cp312-win_amd64.whl.whl
+```
+
+For ComfyUI Portable:
+
+```bash
+python_embeded\python.exe -m pip install ComfyUI\custom_nodes\ComfyUI-Hunyuan3d-2-1\hy3dpaint\DifferentiableRenderer\dist\mesh_inpaint_processor-0.0.0-cp312-cp312-win_amd64.whl.whl
 ```
 
 ---
