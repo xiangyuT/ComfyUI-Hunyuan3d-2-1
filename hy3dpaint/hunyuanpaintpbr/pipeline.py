@@ -646,9 +646,9 @@ class HunyuanPaintPipeline(StableDiffusionPipeline):
                 # predict the noise residual
 
                 noise_pred = self.unet(
-                    latent_model_input,
+                    latent_model_input.to(device=self.unet.device, dtype=self.unet.dtype) if hasattr(latent_model_input, 'to') else latent_model_input,
                     t,
-                    encoder_hidden_states=prompt_embeds,
+                    encoder_hidden_states=prompt_embeds.to(device=self.unet.device, dtype=self.unet.dtype) if hasattr(prompt_embeds, 'to') else prompt_embeds,
                     timestep_cond=timestep_cond,
                     cross_attention_kwargs=self.cross_attention_kwargs,
                     added_cond_kwargs=added_cond_kwargs,
