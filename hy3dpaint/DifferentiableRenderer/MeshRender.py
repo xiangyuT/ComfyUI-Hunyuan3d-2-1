@@ -333,7 +333,7 @@ class MeshRender:
         raster_mode="cr",
         shader_type="face",
         use_opengl=False,
-        device="cuda",
+        device="xpu",
         ortho_scale=1.0
     ):
         """

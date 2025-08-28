@@ -254,13 +254,13 @@ class Diffuser(pl.LightningModule):
         pl.seed_everything(self.trainer.global_rank)
 
     def forward(self, batch):
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16): #float32 for text
+        with torch.autocast(device_type="xpu", dtype=torch.bfloat16): #float32 for text
             contexts = self.cond_stage_model(image=batch.get('image'), text=batch.get('text'), mask=batch.get('mask'))
             # t5_text = contexts['t5_text']['prompt_embeds']
             # nan_count = torch.isnan(t5_text).sum()
             # if nan_count > 0:
             #     print("t5_text has %d NaN values"%(nan_count))
-        with torch.autocast(device_type="cuda", dtype=torch.float16):
+        with torch.autocast(device_type="xpu", dtype=torch.float16):
             with torch.no_grad():
                 latents = self.first_stage_model.encode(batch[self.first_stage_key], sample_posterior=True)
                 latents = self.z_scale_factor * latents
@@ -287,7 +287,7 @@ class Diffuser(pl.LightningModule):
                 # else:
                 #     mesh.export(f"check_{time.time()}.glb")
                 
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        with torch.autocast(device_type="xpu", dtype=torch.bfloat16):
             loss = self.transport.training_losses(self.model, latents, dict(contexts=contexts))["loss"].mean()
         return loss
 
@@ -322,7 +322,7 @@ class Diffuser(pl.LightningModule):
         generator = torch.Generator().manual_seed(0)
 
         with self.ema_scope("Sample"):
-            with torch.amp.autocast(device_type='cuda'):
+            with torch.amp.autocast(device_type='xpu'):
                 try:
                     self.pipeline.device = self.device
                     self.pipeline.dtype = self.dtype

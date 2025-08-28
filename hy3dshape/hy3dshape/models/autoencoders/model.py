@@ -123,7 +123,7 @@ class VectsetVAE(nn.Module):
         cls,
         ckpt_path,
         config_path,
-        device='cuda',
+        device='xpu',
         dtype=torch.float16,
         use_safetensors=None,
         **kwargs,
@@ -157,7 +157,7 @@ class VectsetVAE(nn.Module):
     def from_pretrained(
         cls,
         model_path,
-        device='cuda',
+        device='xpu',
         dtype=torch.float16,
         use_safetensors=False,
         variant='fp16',

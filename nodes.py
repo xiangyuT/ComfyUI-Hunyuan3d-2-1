@@ -35,6 +35,9 @@ from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
 from .hy3dshape.hy3dshape.meshlib import postprocessmesh
 
+from xpu_convert import convert_to_xpu
+convert_to_xpu()
+
 from spandrel import ModelLoader, ImageModelDescriptor
 
 import folder_paths
@@ -204,7 +207,7 @@ def _convert_texture_format(tex: Union[np.ndarray, torch.Tensor, Image.Image],
 
 def convert_ndarray_to_pil(texture):
     texture_size = len(texture)
-    tex = _convert_texture_format(texture,(texture_size, texture_size),"cuda")
+    tex = _convert_texture_format(texture,(texture_size, texture_size),"xpu")
     tex = tex.cpu().numpy()
     processed_texture = (tex * 255).astype(np.uint8)
     pil_texture = Image.fromarray(processed_texture)    
@@ -308,7 +311,7 @@ class Hy3DMeshGenerator:
         #del vae
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect()            
         
         return (latents,)
@@ -389,7 +392,7 @@ class Hy3DMeshGenerator:
         # #del vae
         
         # mm.soft_empty_cache()
-        # torch.cuda.empty_cache()
+        # torch.xpu.empty_cache()
         # gc.collect()            
         
         # return (latents,)        
@@ -532,7 +535,7 @@ class Hy3DInPaint:
         del pipeline
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect()        
         
         return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)         
@@ -702,7 +705,7 @@ class Hy3D21VAEDecode:
         offload_device = mm.unet_offload_device()
 
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
 
         vae.to(device)
         
@@ -731,7 +734,7 @@ class Hy3D21VAEDecode:
         del vae
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect()
         
         return (mesh_output, )        
@@ -1350,7 +1353,7 @@ class Hy3D21MeshGenerationBatch:
                     mesh_output.export(output_glb_path, file_type=file_format)              
                                     
                     mm.soft_empty_cache()
-                    torch.cuda.empty_cache()
+                    torch.xpu.empty_cache()
                     gc.collect()     
                 else:
                     print(f'Skipping file {file}')
@@ -1361,7 +1364,7 @@ class Hy3D21MeshGenerationBatch:
             del vae
             
             mm.soft_empty_cache()
-            torch.cuda.empty_cache()
+            torch.xpu.empty_cache()
             gc.collect() 
             
         return (input_folder, output_folder, processed_input_images, processed_output_meshes, ) 
@@ -1573,7 +1576,7 @@ class Hy3D21GenerateMultiViewsBatch:
                             del paint_pipeline
                             
                             mm.soft_empty_cache()
-                            torch.cuda.empty_cache()
+                            torch.xpu.empty_cache()
                             gc.collect() 
                         else:
                             print(f'Skipping {file}') 
@@ -1588,7 +1591,7 @@ class Hy3D21GenerateMultiViewsBatch:
             print('Nothing to process')       
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect() 
             
         return (processed_meshes, )    
@@ -1833,7 +1836,7 @@ class Hy3DBakeMultiViewsWithMetaData:
         del pipeline
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect() 
         
         return (texture_tensor, texture_mr_tensor, trimesh, output_glb_path)  

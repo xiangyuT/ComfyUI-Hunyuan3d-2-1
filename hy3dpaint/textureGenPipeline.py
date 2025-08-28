@@ -48,7 +48,7 @@ def quick_convert_with_obj2gltf(obj_path: str, glb_path: str) -> bool:
 
 class Hunyuan3DPaintConfig:
     def __init__(self, resolution, camera_azims, camera_elevs, view_weights, ortho_scale, texture_size):
-        self.device = "cuda"
+        self.device = "xpu"
 
         cfg_path = os.path.join(
             os.path.dirname(__file__), "cfgs", "hunyuan-paint-pbr.yaml"
@@ -105,7 +105,7 @@ class Hunyuan3DPaintPipeline:
         #self.load_models()
 
     def load_models(self):
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         #self.models["super_model"] = imageSuperNet(self.config)
         self.models["multiview_model"] = multiviewDiffusionNet(self.config)
         print("Models Loaded.")
@@ -176,7 +176,7 @@ class Hunyuan3DPaintPipeline:
         # image_style = [image.convert("RGB") for image in image_style]
 
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
 
         ###########  Multiview  ##########
         print('Generating MultiViews PBR ...')
@@ -283,7 +283,7 @@ class Hunyuan3DPaintPipeline:
         del self.model
         
         mm.soft_empty_cache()
-        torch.cuda.empty_cache()
+        torch.xpu.empty_cache()
         gc.collect()    
         
     def load_mesh(self, mesh):

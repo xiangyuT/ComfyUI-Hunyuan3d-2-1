@@ -128,8 +128,8 @@ std::vector<torch::Tensor> rasterize_image(torch::Tensor V, torch::Tensor F, tor
     int device_id = V.get_device();
     if (device_id == -1)
         return rasterize_image_cpu(V, F, D, width, height, occlusion_truncation, use_depth_prior);
-    else
-        return rasterize_image_gpu(V, F, D, width, height, occlusion_truncation, use_depth_prior);
+    // else
+    //     return rasterize_image_gpu(V, F, D, width, height, occlusion_truncation, use_depth_prior);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {

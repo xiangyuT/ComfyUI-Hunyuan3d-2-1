@@ -144,7 +144,7 @@ class Hunyuan3DDiTPipeline:
         cls,
         ckpt_path,
         config_path,
-        device='cuda',
+        device='xpu',
         dtype=torch.float16,
         use_safetensors=None,
         attention_mode="sdpa",
@@ -208,7 +208,7 @@ class Hunyuan3DDiTPipeline:
     def from_pretrained(
         cls,
         model_path,
-        device='cuda',
+        device='xpu',
         dtype=torch.float16,
         use_safetensors=False,
         variant='fp16',
@@ -245,7 +245,7 @@ class Hunyuan3DDiTPipeline:
         scheduler,
         conditioner,
         image_processor,
-        device='cuda',
+        device='xpu',
         dtype=torch.float16,
         **kwargs
     ):
@@ -338,7 +338,7 @@ class Hunyuan3DDiTPipeline:
                     return torch.device(module._hf_hook.execution_device)
         return self.device
 
-    def enable_model_cpu_offload(self, gpu_id: Optional[int] = None, device: Union[torch.device, str] = "cuda"):
+    def enable_model_cpu_offload(self, gpu_id: Optional[int] = None, device: Union[torch.device, str] = "xpu"):
         r"""
         Offloads all models to CPU using accelerate, reducing memory usage with a low impact on performance. Compared
         to `enable_sequential_cpu_offload`, this method moves one whole model at a time to the GPU when its `forward`
