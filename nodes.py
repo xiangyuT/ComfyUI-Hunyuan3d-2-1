@@ -35,7 +35,7 @@ from .hy3dshape.hy3dshape.models.autoencoders import ShapeVAE
 
 from .hy3dshape.hy3dshape.meshlib import postprocessmesh
 
-from xpu_convert import convert_to_xpu
+from .xpu_convert import convert_to_xpu
 convert_to_xpu()
 
 from spandrel import ModelLoader, ImageModelDescriptor

@@ -93,8 +93,9 @@ class ImageEncoder(nn.Module):
             low, high = value_range
             image = (image - low) / (high - low)
 
-        image = image.to(self.model.device, dtype=self.model.dtype)
+        image = image.to(device="cpu", dtype=self.model.dtype)
         inputs = self.transform(image)
+        inputs = inputs.to(self.model.device)
         outputs = self.model(inputs)
 
         last_hidden_state = outputs.last_hidden_state
