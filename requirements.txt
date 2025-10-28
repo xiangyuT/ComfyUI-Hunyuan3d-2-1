@@ -1,5 +1,5 @@
 trimesh
-pymeshlab
+pymeshlab==2022.2.post3
 pygltflib
 xatlas
 open3d

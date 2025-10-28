@@ -25,6 +25,61 @@ from diffusers import EulerAncestralDiscreteScheduler, DDIMScheduler, UniPCMulti
 from ..hunyuanpaintpbr.pipeline import HunyuanPaintPipeline
 
 
+def get_or_download_model_path():
+    env_var_name = "_LLM_SCALER_OMNI_HY3D_PATH"
+    model_sub_path_in_repo = "hunyuan3d-paintpbr-v2-1"
+
+    base_download_dir = os.getenv(env_var_name, "/llm/models/Hunyuan3D-2.1")
+
+    if base_download_dir is None:
+        raise ValueError(
+            f"Environment variable '{env_var_name}' is not set. "
+            f"Please set it to the desired base directory for model downloads and storage."
+        )
+
+    os.makedirs(base_download_dir, exist_ok=True)
+
+    expected_full_model_path = os.path.join(base_download_dir, model_sub_path_in_repo)
+
+    if os.path.exists(expected_full_model_path) and os.path.isdir(
+        expected_full_model_path
+    ):
+        print(f"Model found at designated path: {expected_full_model_path}")
+        model_path = expected_full_model_path
+    else:
+        print(
+            f"Model not found at {expected_full_model_path}. Attempting to download..."
+        )
+        try:
+            downloaded_repo_root_path = huggingface_hub.snapshot_download(
+                repo_id="tencent/Hunyuan3D-2.1",
+                allow_patterns=[
+                    f"{model_sub_path_in_repo}/*",
+                ],
+                local_dir=base_download_dir,
+                local_dir_use_symlinks=False,
+            )
+
+            model_path = os.path.join(downloaded_repo_root_path, model_sub_path_in_repo)
+
+            if not (os.path.exists(model_path) and os.path.isdir(model_path)):
+                raise RuntimeError(
+                    f"Download completed, but expected model directory not found at {model_path}. "
+                    f"This might indicate an issue with allow_patterns or the remote repository structure."
+                )
+
+            print(f"Model downloaded successfully to: {model_path}")
+
+        except HfHubHTTPError as e:
+            print(f"Error downloading model from Hugging Face Hub: {e}")
+            raise
+        except Exception as e:
+            print(f"An unexpected error occurred during model download: {e}")
+            raise
+
+    return model_path
+
+
 class multiviewDiffusionNet:
     def __init__(self, config) -> None:
         self.device = config.device
@@ -35,13 +90,8 @@ class multiviewDiffusionNet:
         self.cfg = cfg
         self.mode = self.cfg.model.params.stable_diffusion_config.custom_pipeline[2:]
 
-        model_path = huggingface_hub.snapshot_download(
-            repo_id=config.multiview_pretrained_path,
-            allow_patterns=["hunyuan3d-paintpbr-v2-1/*"],
-        )
+        model_path = get_or_download_model_path()
 
-        model_path = os.path.join(model_path, "hunyuan3d-paintpbr-v2-1")
-                
         pipeline = HunyuanPaintPipeline.from_pretrained(
             model_path,
             torch_dtype=torch.float16
@@ -77,17 +127,17 @@ class multiviewDiffusionNet:
     def forward_one(self, input_images, control_images, prompt=None, custom_view_size=None, resize_input=False, num_steps=10, guidance_scale=3.0, seed=0):
         self.seed_everything(seed)
         custom_view_size = custom_view_size if custom_view_size is not None else self.pipeline.view_size
-        
+
         if not isinstance(input_images, List):
             input_images = [input_images]
-            
+
         if not resize_input:
             input_images = [
                 input_image.resize((self.pipeline.view_size, self.pipeline.view_size)) for input_image in input_images
             ]
         else:
             input_images = [input_image.resize((custom_view_size, custom_view_size)) for input_image in input_images]
-            
+
         for i in range(len(control_images)):
             control_images[i] = control_images[i].resize((custom_view_size, custom_view_size))
             if control_images[i].mode == "L":

@@ -204,9 +204,9 @@ def patch_xpu_interpolate_to_cpu():
         """
 
         if input_tensor.device.type == "xpu":
-            print(
-                f"Intercepted interpolate call for XPU tensor at device {input_tensor.device}. Moving to CPU for computation."
-            )
+            # print(
+            #     f"Intercepted interpolate call for XPU tensor at device {input_tensor.device}. Moving to CPU for computation."
+            # )
             original_device = input_tensor.device
 
             # Move input to CPU
@@ -217,9 +217,9 @@ def patch_xpu_interpolate_to_cpu():
 
             # Move the result back to the original XPU device
             result_on_xpu = result_on_cpu.to(original_device)
-            print(
-                f"Interpolation completed on CPU, result moved back to {original_device}."
-            )
+            # print(
+            #     f"Interpolation completed on CPU, result moved back to {original_device}."
+            # )
             return result_on_xpu
         else:
             # If not an XPU tensor, just call the original function directly
@@ -258,6 +258,6 @@ def convert_to_xpu():
     # AttnProcessor2_0.__call__ = chunked_diffusers_attention_processor_call
     F.scaled_dot_product_attention = chunk_scaled_dot_product_attention
     RealESRGANer.process = process_on_xpu
-    patch_xpu_interpolate_to_cpu()
+    # patch_xpu_interpolate_to_cpu()
 
     print("Converted to XPU compatible functions.")
