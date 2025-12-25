@@ -62,12 +62,25 @@ def to_rgb_image(maybe_rgba: Image.Image):
         return maybe_rgba
     elif maybe_rgba.mode == "RGBA":
         rgba = maybe_rgba
-        img = numpy.random.randint(127, 128, size=[rgba.size[1], rgba.size[0], 3], dtype=numpy.uint8)
-        img = Image.fromarray(img, "RGB")
+        # Use white background instead of random gray for better color preservation
+        img = Image.new("RGB", rgba.size, (255, 255, 255))
         img.paste(rgba, mask=rgba.getchannel("A"))
         return img
+    elif maybe_rgba.mode == "P":
+        # Palette mode: convert to RGBA if has transparency, otherwise convert to RGB directly
+        if "transparency" in maybe_rgba.info:
+            return to_rgb_image(maybe_rgba.convert("RGBA"))
+        else:
+            return maybe_rgba.convert("RGB")
+    elif maybe_rgba.mode == "L":
+        # Grayscale image: convert to RGB directly
+        return maybe_rgba.convert("RGB")
+    elif maybe_rgba.mode == "LA":
+        # Grayscale with alpha: convert to RGBA first then process recursively
+        return to_rgb_image(maybe_rgba.convert("RGBA"))
     else:
-        raise ValueError("Unsupported image type.", maybe_rgba.mode)
+        # Other modes: attempt generic conversion to RGB
+        return maybe_rgba.convert("RGB")
 
 
 class HunyuanPaintPipeline(StableDiffusionPipeline):

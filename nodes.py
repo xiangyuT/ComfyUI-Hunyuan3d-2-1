@@ -823,7 +823,14 @@ class Hy3D21LoadImageWithTransparency:
         for i in ImageSequence.Iterator(img):
             i = node_helpers.pillow(ImageOps.exif_transpose, i)
             
-            output_images_ori.append(pil2tensor(i))
+            # Convert P mode with transparency to RGBA, otherwise keep original mode
+            if i.mode == 'P' and 'transparency' in i.info:
+                i_for_ori = i.convert('RGBA')
+            elif i.mode == 'P':
+                i_for_ori = i.convert('RGB')
+            else:
+                i_for_ori = i
+            output_images_ori.append(pil2tensor(i_for_ori))
 
             if i.mode == 'I':
                 i = i.point(lambda i: i * (1 / 255))

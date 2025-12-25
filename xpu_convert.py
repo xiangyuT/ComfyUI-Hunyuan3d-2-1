@@ -254,7 +254,7 @@ def unpatch_xpu_interpolate_to_cpu():
         print("Error: Could not unpatch. Original function reference missing.")
 
 def convert_to_xpu():
-    nn.LayerNorm.forward = _new_layer_norm_forward
+    # nn.LayerNorm.forward = _new_layer_norm_forward
     # AttnProcessor2_0.__call__ = chunked_diffusers_attention_processor_call
     F.scaled_dot_product_attention = chunk_scaled_dot_product_attention
     RealESRGANer.process = process_on_xpu
